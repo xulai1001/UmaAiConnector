@@ -54,12 +54,12 @@ namespace UmamusumeResponseAnalyzer.Handler
             {
                 GameStats.isFullGame = false;
                 AnsiConsole.MarkupLine($"[red]警告：回合数不正确，上一个回合为{GameStats.currentTurn}，当前回合为{turnNum}[/]");
-                EventLogger.Init();
+                EventLogger.Init(@event.data.chara_info.support_card_array);
             }
             else if (turnNum == 1)
             {
                 GameStats.isFullGame = true;
-                EventLogger.Init();
+                EventLogger.Init(@event.data.chara_info.support_card_array);
             }
 
             //买技能，大师杯剧本年末比赛，会重复显示
@@ -1000,8 +1000,8 @@ namespace UmamusumeResponseAnalyzer.Handler
                 {
                     var gameStatusToSend = new GameStatusSend_UAF(@event);
                     SubscribeAiInfo.Signal(gameStatusToSend);
-
-                    if (Config.Get(Localization.Resource.ConfigSet_WriteAIInfo))
+                    AnsiConsole.MarkupLine("[aqua]AI计算中...[/]");
+                    if (Config.Get(Localization.Config.I18N_WriteAIInfo))
                     {
                         var currentGSdirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UmamusumeResponseAnalyzer", "GameData");
                         Directory.CreateDirectory(currentGSdirectory);
