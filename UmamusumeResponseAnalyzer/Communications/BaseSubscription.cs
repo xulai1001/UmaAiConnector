@@ -1,4 +1,5 @@
 ﻿using Gallop;
+using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,15 +42,21 @@ namespace UmamusumeResponseAnalyzer.Communications
 
         public static readonly Dictionary<string, BaseSubscription<T>> SubscribedClients = [];
         public static event EventHandler<T> BaseSubscriptionHandler;
-        public static void Signal(T ev)
+        public static int Signal(T ev)
         {
             if (BaseSubscriptionHandler != null)
             {
-                foreach (var del in BaseSubscriptionHandler.GetInvocationList().Cast<EventHandler<T>>())
+                var Handlers = BaseSubscriptionHandler.GetInvocationList().Cast<EventHandler<T>>();
+                if (Handlers != null)
                 {
-                    del.Invoke(null, ev);
+                    foreach (var del in Handlers)
+                        del.Invoke(null, ev);
+                    return Handlers.ToList().Count;
                 }
             }
+
+            // or else goes here.
+            return 0;
         }
     }
 }

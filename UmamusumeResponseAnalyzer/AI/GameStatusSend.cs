@@ -64,10 +64,6 @@ namespace UmamusumeResponseAnalyzer.AI
         public int lianghua_outgoingStage;//0未点击，1点击还未解锁出行，2已解锁出行
         public int lianghua_outgoingUsed;//凉花的出行已经走了几段了   暂时不考虑其他友人团队卡的出行
 
-
-
-
-
         public GameStatusSend_UAF(Gallop.SingleModeCheckEventResponse @event)
         {
 
@@ -114,7 +110,6 @@ namespace UmamusumeResponseAnalyzer.AI
 
             skillPt = @event.data.chara_info.skill_point;
 
-
             failureRateBias = 0;
             if (@event.data.chara_info.chara_effect_id_array.Contains(6))
             {
@@ -143,10 +138,7 @@ namespace UmamusumeResponseAnalyzer.AI
 
             skillScore = 0;
 
-
-
             cardId = new int[6];
-
 
             isPositiveThinking = @event.data.chara_info.chara_effect_id_array.Contains(25);
 
@@ -155,7 +147,7 @@ namespace UmamusumeResponseAnalyzer.AI
             zhongMaBlueCount = new int[5];
             //用属性上限猜蓝因子个数
             {
-                int[] defaultLimit = new int[5] { 2000, 2000, 1800, 1800, 1400 };
+                int[] defaultLimit = GameGlobal.FiveStatusLimit[@event.data.chara_info.scenario_id];    // 到这里肯定是UAF剧本
                 double factor = 16;//每个三星因子可以提多少上限
                 if (turn >= 54)//第二次继承结束
                     factor = 22;
@@ -170,12 +162,7 @@ namespace UmamusumeResponseAnalyzer.AI
                 }
             }
 
-
-
-
             //从游戏json的id到ai的人头编号的换算
-
-
             foreach (var s in @event.data.chara_info.support_card_array)
             {
                 int p = s.position - 1;
@@ -187,8 +174,6 @@ namespace UmamusumeResponseAnalyzer.AI
             persons = new UAFPerson[9];
             for (int i = 0; i < 9; i++)
                 persons[i] = new UAFPerson();
-
-
 
             //var friendCards = new List<int>  //各种友人团队卡
             //{
@@ -307,9 +292,6 @@ namespace UmamusumeResponseAnalyzer.AI
 
             //到目前为止，headIdConvert写完了
 
-
-
-
             personDistribution = new int[5, 5];
             for (int i = 0; i < 5; i++)
                 for (int j = 0; j < 5; j++)
@@ -353,7 +335,6 @@ namespace UmamusumeResponseAnalyzer.AI
                 {
                     enableidx = Convert.ToInt32(train.command_id) % 10;
                 }
-
 
             }
 
@@ -461,11 +442,7 @@ namespace UmamusumeResponseAnalyzer.AI
                 lianghua_outgoingUsed = 0;
             }
 
-
         }
-
-
-
 
     }
 }

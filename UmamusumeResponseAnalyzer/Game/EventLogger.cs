@@ -17,8 +17,8 @@ namespace UmamusumeResponseAnalyzer.Game
         private string fmt(int x) => x.ToString("+#;-#;0");
         public string Explain()
         {
-            // return $">> 属性: {fmt(stats)}, Pt: {fmt(pt)}, 体力: {fmt(vital)}；事件强度: {eventStrength}";
-            return $"属性: {fmt(Stats)}, Pt: {fmt(Pt)}, 体力: {fmt(Vital)}";
+            return $">> 属性: {fmt(Stats)}, Pt: {fmt(Pt)}, 体力: {fmt(Vital)}；评分: +{EventStrength}";
+            // return $"属性: {fmt(Stats)}, Pt: {fmt(Pt)}, 体力: {fmt(Vital)}";
         }
         public static LogValue operator -(LogValue a, LogValue b)
         {
@@ -38,7 +38,7 @@ namespace UmamusumeResponseAnalyzer.Game
         {
             get
             {
-                return (Stats + Pt) / 2 + Vital;
+                return Stats*4 + Pt*2 + Vital*6;
             }
         }
     }
@@ -80,7 +80,7 @@ namespace UmamusumeResponseAnalyzer.Game
 
     public static class EventLogger
     {
-        public const int MinEventStrength = 3;
+        public const int MinEventStrength = 25;
         // 排除佐岳充电,SS,继承,第三年凯旋门（输/赢）,以及无事发生直接到下一回合的情况
         public static readonly int[] ExcludedEvents = [809043003, 400006112, 400000040, 400006474, 400006439, -1];
         // 友人和团队卡不计入连续事件，这里仅排除这几个
@@ -140,7 +140,7 @@ namespace UmamusumeResponseAnalyzer.Game
 
         //--------------------------
         // 这个方法在重复发送第一回合时会被反复调用，需要可重入
-        public static void Init(SingleModeSupportCard[] cards)
+        public static void Init(SingleModeCheckEventResponse @event)
         {
             CardEvents = [];
             AllEvents = [];
@@ -153,9 +153,9 @@ namespace UmamusumeResponseAnalyzer.Game
             SuccessEventSelectCount = 0;
             CurrentScenario = 0;
             IsStart = false;
-            InitTurn = GameStats.currentTurn;
+            InitTurn = @event.data.chara_info.turn;
             // 需要传入SupportCard数组以确认带了哪些卡
-            CardIDs = cards.Select(x => x.support_card_id).ToList();
+            CardIDs = @event.data.chara_info.support_card_array.Select(x => x.support_card_id).ToList();
             CardEventRemaining = 0;
             foreach (var c in CardIDs)
             {
@@ -273,10 +273,13 @@ namespace UmamusumeResponseAnalyzer.Game
                     if (choice.SuccessEffectValue != null && choice.SuccessEffectValue.Extras.Any(x => x.Contains("打ち切り")))
                     {
                         Print(@"[red]事件中断[/]");
-                        ++CardEventFinishCount;
-                        CardEventRemaining -= (rarity - which); // 计算打断了几段事件，从总数里减去
-                        if (CardEventFinishCount == 5)
-                            CardEventFinishTurn = LastEvent.Turn;
+                        if (CardIDs.Contains(cardId))             // 排除打断乱入连续事件的情况
+                        {
+                            ++CardEventFinishCount;
+                            CardEventRemaining -= (rarity - which); // 计算打断了几段事件，从总数里减去
+                            if (CardEventFinishCount == 5)
+                                CardEventFinishTurn = LastEvent.Turn;
+                        }
                     }
                 }                
             }
@@ -288,7 +291,7 @@ namespace UmamusumeResponseAnalyzer.Game
             if (CardEventCount > 0)
             {
                 double p = 0.25;
-                int n = GameStats.currentTurn - ExcludedTurns.Count(x => x >= InitTurn && x <= GameStats.currentTurn);
+                int n = (GameStats.currentTurn - InitTurn + 1) - ExcludedTurns.Count(x => x >= InitTurn && x <= GameStats.currentTurn);
                 //(p(x<=k-1) + p(x<=k)) / 2
                 double bn = Binomial.CDF(p, n, CardEventCount);
                 double bn_1 = Binomial.CDF(p, n, CardEventCount - 1);
@@ -299,7 +302,7 @@ namespace UmamusumeResponseAnalyzer.Game
                     // 调试中，暂不加入I18N
                     ret.Add(string.Format("连续事件出现[yellow]{0}[/]次", CardEventCount));
                     ret.Add(string.Format("走完[yellow]{0}[/]张卡", CardEventFinishCount));
-                    if (InitTurn != 1)
+                    if (InitTurn != 1 && n > 0)
                         ret.Add(string.Format("连续事件运气: [yellow]{0}%[/]", ((bn + bn_1) / 2 * 200 - 100).ToString("+#;-#;0")));
                     else
                     {
