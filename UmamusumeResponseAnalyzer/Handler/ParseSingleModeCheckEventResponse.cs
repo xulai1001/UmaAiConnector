@@ -98,8 +98,20 @@ namespace UmamusumeResponseAnalyzer.Handler
                                 .WithScenarioId(@event.data.chara_info.scenario_id)
                                 .TryGet(out var choice);
                             if (find)
-                                if (!eventHasManualChoice)  // 没有手动选项，还能看
+                                if (!eventHasManualChoice)  // 没有手动选项，还能看 
+                                {
+                                    AnsiConsole.MarkupLine("[yellow]已记录事件结果[/]");
                                     tree.AddNode(MarkupText(choice.Effect, choice.State));
+                                    Debug.AppendLog(new SuccessEventLogEntry
+                                    {
+                                        turn = GameStats.currentTurn,
+                                        storyId = i.story_id,
+                                        selectIndex = i.event_contents_info.choice_array[j].select_index,                                     
+                                        effect = choice.Effect,
+                                        state = choice.State,
+                                        charaInfo = new SuccessEventCharaInfo(@event.data.chara_info),
+                                    }, "SuccessEvent");
+                                }
                                 else
                                     AddNormalEvent();
                             else

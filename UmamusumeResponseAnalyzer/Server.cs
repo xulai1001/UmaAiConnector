@@ -116,6 +116,10 @@ namespace UmamusumeResponseAnalyzer
                     {
                         Handlers.ParseChoiceRequest(dyn.ToObject<Gallop.SingleModeChoiceRequest>());
                     }
+                    if (dyn.gain_skill_info_array != null)
+                        AnsiConsole.MarkupLine($"[cyan]习得 {dyn.gain_skill_info_array.Count} 个技能[/]");
+                   // Debug.AppendLog(dyn, "Request");
+                        
                 }
             }
             catch (Exception e)
@@ -134,6 +138,7 @@ namespace UmamusumeResponseAnalyzer
                     if (dyn == null) return;
                     if (dyn.data == null) return;
                     var data = dyn.data;
+                    bool parsed = false;
                     #region pre-fix
                     // 如果在选技能时退出游戏重新进入，会套一层“single_mode_load_common”，在这里去掉这层
                     if (data.single_mode_load_common != null)
@@ -175,7 +180,8 @@ namespace UmamusumeResponseAnalyzer
                             }
                             else
                                 Handlers.ParseCommandInfo(dyn.ToObject<Gallop.SingleModeCheckEventResponse>());
-                        }
+                            parsed = true;
+                        }                        
                     }
                     if (dyn.data.command_result != null) // 训练结果
                     {
@@ -186,53 +192,75 @@ namespace UmamusumeResponseAnalyzer
                                 GameStats.stats[GameStats.currentTurn].isTrainingFailed = true;
                         }
                         EventLogger.Start(dyn.ToObject<Gallop.SingleModeCheckEventResponse>()); // 开始记录事件，跳过从上一次调用update到这里的所有事件和训练
+                        Debug.AppendLog(dyn, "CommandResult");
+                        parsed = true;
                     }
                     if (data.chara_info != null && data.unchecked_event_array?.Count > 0)
                     {
                         if (Config.Get(Localization.Config.I18N_ParseSingleModeCheckEventResponse))
                             Handlers.ParseSingleModeCheckEventResponse(dyn.ToObject<Gallop.SingleModeCheckEventResponse>());
+                        Debug.AppendLog(dyn, "EventResponse");
+                        parsed = true;
                     }
                     if (data.chara_info != null && (data.chara_info.state == 2 || data.chara_info.state == 3) && data.unchecked_event_array?.Count == 0)
                     {
                         if (Config.Get(Localization.Config.I18N_MaximiumGradeSkillRecommendation) && data.chara_info.skill_tips_array != null)
+                        {
                             Handlers.ParseSkillTipsResponse(dyn.ToObject<Gallop.SingleModeCheckEventResponse>());
+                            Debug.AppendLog(dyn, "SkillTips");
+                            parsed = true;
+                        }
                     }
                     if (data.trained_chara_array != null && data.trained_chara_favorite_array != null && data.room_match_entry_chara_id_array != null)
                     {
                         if (Config.Get(Localization.Config.I18N_ParseTrainedCharaLoadResponse))
                             Handlers.ParseTrainedCharaLoadResponse(dyn.ToObject<Gallop.TrainedCharaLoadResponse>());
+                        parsed = true;
                     }
                     if (data.user_info_summary != null && Config.Get(Localization.Config.I18N_ParseFriendSearchResponse))
                     {
                         if (data.practice_partner_info != null && data.support_card_data != null && data.follower_num != null && data.own_follow_num != null)
+                        {
                             Handlers.ParseFriendSearchResponse(dyn.ToObject<Gallop.FriendSearchResponse>());
+                            parsed = true;
+                        }
                         else if (data.user_info_summary.user_trained_chara != null)
+                        {
                             Handlers.ParseFriendSearchResponseSimple(dyn.ToObject<Gallop.FriendSearchResponse>());
+                            parsed = true;
+                        }
                     }
                     if (data.opponent_info_array?.Count == 3)
                     {
                         if (Config.Get(Localization.Config.I18N_ParseTeamStadiumOpponentListResponse))
                             Handlers.ParseTeamStadiumOpponentListResponse(dyn.ToObject<Gallop.TeamStadiumOpponentListResponse>()); //https://github.com/CNA-Bld/EXNOA-CarrotJuicer/issues/2
+                        parsed = true;
                     }
                     if (data.trained_chara_array != null && data.race_result_info != null && data.entry_info_array != null && data.practice_race_id != null && data.state != null && data.practice_partner_owner_info_array != null)
                     {
                         if (Config.Get(Localization.Config.I18N_ParsePracticeRaceRaceStartResponse))
                             Handlers.ParsePracticeRaceRaceStartResponse(dyn.ToObject<Gallop.PracticeRaceRaceStartResponse>());
+                        parsed = true;
                     }
                     if (data.race_scenario != null && data.random_seed != null && data.race_horse_data_array != null && data.trained_chara_array != null && data.season != null && data.weather != null && data.ground_condition != null)
                     {
                         if (Config.Get(Localization.Config.I18N_ParseRoomMatchRaceStartResponse))
                             Handlers.ParseRoomMatchRaceStartResponse(dyn.ToObject<Gallop.RoomMatchRaceStartResponse>());
+                        parsed = true;
                     }
                     if (data.room_info != null && data.room_user_array != null && data.race_horse_data_array != null && data.trained_chara_array != null)
                     {
                         if (Config.Get(Localization.Config.I18N_ParseChampionsRaceStartResponse))
                             Handlers.ParseChampionsRaceStartResponse(dyn.ToObject<Gallop.ChampionsFinalRaceStartResponse>());
+                        parsed = true;
                     }
                     if (dyn.data_headers.server_list != null && dyn.data_headers.server_list.resource_server_login != null)
                     {
                         AnsiConsole.MarkupLine(I18N_LoginRequestDetected, dyn.data_headers.viewer_id);
+                        parsed = true;
                     }
+                    if (!parsed)
+                        Debug.AppendLog(dyn, "Unparsed");
                 }
                 catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
                 catch (Exception e)
@@ -361,6 +389,8 @@ namespace UmamusumeResponseAnalyzer
                 OnPing.Signal();
                 return;
             }
+            else
+                Debug.AppendLog(ctx.Request.RawUrl, "RawUrl");
 
             await ctx.Response.OutputStream.WriteAsync(Array.Empty<byte>());
             ctx.Response.Close();

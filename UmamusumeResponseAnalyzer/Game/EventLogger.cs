@@ -78,6 +78,34 @@ namespace UmamusumeResponseAnalyzer.Game
         public bool isFinished = false;
     }
 
+    // 记录特定事件的结果和当前属性
+    public class SuccessEventCharaInfo 
+    {
+        public int charaId;
+        public int[] fiveStatus;
+        public int vital;
+        public int maxVital;
+        public int skillPoint;
+        public SuccessEventCharaInfo(SingleModeChara ch) 
+        {
+            charaId = ch.card_id;
+            fiveStatus = new int[] { ch.speed, ch.stamina, ch.power, ch.guts, ch.wiz };
+            vital = ch.vital;
+            maxVital = ch.max_vital;
+            skillPoint = ch.skill_point;
+        }
+    }
+
+    public class SuccessEventLogEntry
+    {
+        public int turn = -1;
+        public int storyId = 0;
+        public int selectIndex = -1;
+        public State? state;
+        public string? effect;
+        public SuccessEventCharaInfo charaInfo;
+    }
+
     public static class EventLogger
     {
         public const int MinEventStrength = 25;
@@ -163,6 +191,7 @@ namespace UmamusumeResponseAnalyzer.Game
                     CardEventRemaining += c / 10000;
             }
         }
+
         // 开始记录属性变化
         public static void Start(SingleModeCheckEventResponse @event)
         {

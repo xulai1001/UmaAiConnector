@@ -30,6 +30,8 @@ namespace UmamusumeResponseAnalyzer.Handler
         {
             string pathname = $"Logs/{tag}.json";
             List<object>? log = new List<object>();
+            if (!Directory.Exists("Logs"))
+                Directory.CreateDirectory("Logs");
             if (File.Exists(pathname))
                 log = JsonConvert.DeserializeObject<List<object>>(File.ReadAllText(pathname, Encoding.UTF8));
             if (log != null) {
