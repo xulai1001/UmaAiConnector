@@ -1,4 +1,5 @@
 ﻿using Gallop;
+using MathNet.Numerics.RootFinding;
 using Spectre.Console;
 using System.Text.RegularExpressions;
 using UmamusumeResponseAnalyzer.Entities;
