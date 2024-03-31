@@ -74,7 +74,7 @@ namespace UmamusumeResponseAnalyzer.AI
                 uaf_liferace &= (@event.data.home_info.command_info_array[i].is_enable==0);
             }
 
-            if (uaf_liferace | (@event.data.chara_info.playing_state != 1))
+            if (uaf_liferace || (@event.data.chara_info.playing_state != 1))
             {
                 islegal = false; //生涯比赛和UAF直接return，就不发了
                 return;
@@ -415,7 +415,7 @@ namespace UmamusumeResponseAnalyzer.AI
                     lianghua_outgoingStage = 2;
                 else {
                     bool lianghuaClicked = false;//友人卡是否点过第一次
-                    for (int t = GameStats.currentTurn; t >= 1; t--)
+                    for (int t = @event.data.chara_info.turn - 1; t >= 1; t--)
                     {
                         if (GameStats.stats[t] == null)
                         {
