@@ -42,6 +42,8 @@ namespace Gallop
             public SingleModeArcDataSet arc_data_set;
             [Key("sport_data_set")]
             public SingleModeSportDataSet sport_data_set;
+            [Key("select_index")]
+            public int? select_index;    // 上次事件结果
         }
     }
     [MessagePackObject]

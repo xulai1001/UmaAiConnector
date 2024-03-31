@@ -47,18 +47,19 @@ namespace UmamusumeResponseAnalyzer.Game
         public LogValue Value;
         public int Turn = 0;
         public int StoryId = -1;
-        public ChoiceArray[]? ChoiceResult;  // 透视值
+        public int SelectIndex = -1;    // 返回的选择结果
+        public int EventType = 0;
         public int Pt => Value.Pt;
         public int Vital => Value.Vital;
         public int Stats => Value.Stats;
         public double EventStrength => Value.EventStrength;
-
         public LogEvent() { }
         public LogEvent(LogEvent ev)
         {
             Turn = ev.Turn;
             StoryId = ev.StoryId;
-            ChoiceResult = ev.ChoiceResult;
+            SelectIndex = ev.SelectIndex;
+            EventType = ev.EventType;
             Value = new LogValue
             {
                 Pt = ev.Pt,
@@ -159,7 +160,6 @@ namespace UmamusumeResponseAnalyzer.Game
                 Vital = vital
             };
         }
-
         public static void Print(string s)
         {
             // 以后可能用别的打印方式
@@ -203,6 +203,12 @@ namespace UmamusumeResponseAnalyzer.Game
         // 结束记录前一个事件的属性变化，并保存
         public static void Update(SingleModeCheckEventResponse @event)
         {
+            // 获取上一个事件的结果
+            if (IsStart && @event.data.select_index != null && @event.data.select_index != 1)
+            {
+                Print($"[yellow]上次事件结果: {(State)@event.data.select_index}[/]");
+            }
+
             if (IsStart && @event.data.unchecked_event_array != null)
             {
                 // 获得上一个事件的属性并保存
@@ -210,20 +216,19 @@ namespace UmamusumeResponseAnalyzer.Game
                 LastEvent.Value = currentValue - LastValue;
 
                 // 分析事件
-                // 过滤掉特判的、不加属性的。
-                // pt<0的是因为点了技能，会干扰统计，也排除掉
                 var eventType = LastEvent.StoryId / 100000000;
-                if (!LastEvent.Value.IsEmpty && !ExcludedEvents.Contains(LastEvent.StoryId) && LastEvent.Pt >= 0)
+                var rarity = LastEvent.StoryId / 10000000 % 10;    // 取第二位-稀有度
+                var which = LastEvent.StoryId % 100;   // 取低2位
+                var cardId = LastEvent.StoryId / 1000 % 100000;
+
+                if (!ExcludedEvents.Contains(LastEvent.StoryId))
                 {
+                    // 首先判断是否为支援卡事件，如"8 30161 003"
                     if (eventType == 8)
-                    {
-                        // 支援卡事件，如"8 30161 003"
-                        var rarity = LastEvent.StoryId / 10000000 % 10;    // 取第二位-稀有度
-                        var which = LastEvent.StoryId % 100;   // 取低2位
-                        var cardId = LastEvent.StoryId / 1000 % 100000;
+                    {                        
                         if (rarity > 1 && which <= rarity && !ExcludedFriendCards.Contains(cardId))    // 是连续事件
                         {
-                            if (CardIDs.Contains(cardId))
+                            if (CardIDs.Contains(cardId))   // 是携带的支援卡
                             {
                                 ++CardEventCount;
                                 --CardEventRemaining;
@@ -250,9 +255,11 @@ namespace UmamusumeResponseAnalyzer.Game
                         AllEvents.Add(new LogEvent(LastEvent));
                         Print($">> {LastEvent.Value.Explain()}");
                     }
-                    else
+                    else if (!LastEvent.Value.IsEmpty && LastEvent.Pt >= 0)
                     {
                         // 马娘或系统事件
+                        // 过滤掉特判的、不加属性的。
+                        // pt<0的是因为点了技能，会干扰统计，也排除掉
                         var st = LastEvent.EventStrength;
                         if (st < 0 || st >= MinEventStrength) // 过滤掉蚊子腿事件（<0是坏事件，需要留着）
                         {
@@ -266,15 +273,16 @@ namespace UmamusumeResponseAnalyzer.Game
                     // 分析特殊事件
                     if (LastEvent.StoryId == 400000040)    // 继承
                     {
-                        Print($"[yellow]本次继承属性：{LastEvent.Stats}[/]");
+                        Print($"[yellow]本次继承属性：{LastEvent.Stats}, Pt: {LastEvent.Pt}[/]");
                         InheritStats.Add(LastEvent.Stats);
                     }
                 }
+
                 // 保存当前回合数和story_id到lastEvent，用于下次调用
                 LastValue = currentValue;
                 LastEvent.Turn = @event.data.chara_info.turn;
                 LastEvent.StoryId = @event.data.unchecked_event_array.Count() > 0 ? @event.data.unchecked_event_array.First().story_id : -1;
-                LastEvent.ChoiceResult = @event.data.unchecked_event_array.Count() > 0 ? @event.data.unchecked_event_array.First().event_contents_info.choice_array : null;
+                
             }
         }
 

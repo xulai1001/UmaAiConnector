@@ -40,10 +40,14 @@ namespace UmamusumeResponseAnalyzer.Game
     public class TurnStats
     {
         public bool isTraining;//是否为训练回合（否则为比赛回合）
+        public bool isNonTraining = false;
+        public bool isRace = false;
         public int motivation;//干劲（心情）
         public TrainStats[] fiveTrainStats;//五个训练分别加多少
 
         public int playerChoice;//玩家最终点了哪个训练
+        public int nonTrainingCommandType;  // 非训练回合的CommandType
+        public int raceProgramId;   // 比赛回合的ProgramId
         public bool isTrainingFailed;//是否训练失败
         public int[] trainLevel;//训练等级
         public int[] trainLevelCount;//训练等级计数，凯旋门每4为一级
@@ -75,6 +79,10 @@ namespace UmamusumeResponseAnalyzer.Game
         public TurnStats()
         {
             isTraining = false;
+            isNonTraining = false;
+            isRace = false;
+            nonTrainingCommandType = 0;
+            raceProgramId = 0;
             motivation = 0;
             playerChoice = -1;
             isTrainingFailed = false;

@@ -108,9 +108,12 @@ namespace UmamusumeResponseAnalyzer
                     var dyn = JsonConvert.DeserializeObject<dynamic>(str);
                     if (dyn == default(dynamic)) return;
 
-                    if (!dyn.GetType().IsValueType && dyn.command_type != null && dyn.command_type == 1) //玩家点击了训练
+                    if (!dyn.GetType().IsValueType && dyn.command_type != null) //玩家点击了训练
                     {
-                        Handlers.ParseTrainingRequest(dyn.ToObject<Gallop.SingleModeExecCommandRequest>());
+                        if (dyn.command_type == 1)
+                            Handlers.ParseTrainingRequest(dyn.ToObject<Gallop.SingleModeExecCommandRequest>());
+                        else
+                            Handlers.ParseNonTrainingRequest(true, false, (int)dyn.current_turn, (int)dyn.command_type);                            
                     }
                     if (dyn.choice_number != null && dyn.choice_number > 0)  // 玩家点击了事件
                     {
@@ -118,8 +121,10 @@ namespace UmamusumeResponseAnalyzer
                     }
                     if (dyn.gain_skill_info_array != null)
                         AnsiConsole.MarkupLine($"[cyan]习得 {dyn.gain_skill_info_array.Count} 个技能[/]");
-                   // Debug.AppendLog(dyn, "Request");
-                        
+                    if (dyn.program_id != null)     // 比赛
+                        Handlers.ParseNonTrainingRequest(false, true, (int)dyn.current_turn, (int)dyn.program_id);
+                    // Debug.AppendLog(dyn, "Request");
+
                 }
             }
             catch (Exception e)
