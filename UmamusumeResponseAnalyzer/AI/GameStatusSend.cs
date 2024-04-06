@@ -143,7 +143,7 @@ namespace UmamusumeResponseAnalyzer.AI
 
             isPositiveThinking = @event.data.chara_info.chara_effect_id_array.Contains(25);
 
-            bool LArcIsAbroad = (turnNum >= 37 && turnNum <= 43) || (turnNum >= 61 && turnNum <= 67);
+            var LArcIsAbroad = (turnNum >= 37 && turnNum <= 43) || (turnNum >= 61 && turnNum <= 67);
 
             zhongMaBlueCount = new int[5];
             //用属性上限猜蓝因子个数
@@ -154,9 +154,9 @@ namespace UmamusumeResponseAnalyzer.AI
                     factor = 22;
                 else if (turn >= 30)//第二次继承结束
                     factor = 19;
-                for (int i = 0; i < 5; i++)
+                for (var i = 0; i < 5; i++)
                 {
-                    int threeStarCount = (int)Math.Round((fiveStatusLimit[i] - defaultLimit[i]) / 2 / factor);
+                    var threeStarCount = (int)Math.Round((fiveStatusLimit[i] - defaultLimit[i]) / 2 / factor);
                     if (threeStarCount > 6) threeStarCount = 6;
                     if (threeStarCount < 0) threeStarCount = 0;
                     zhongMaBlueCount[i] = threeStarCount * 3;
@@ -166,7 +166,7 @@ namespace UmamusumeResponseAnalyzer.AI
 
             foreach (var s in @event.data.chara_info.support_card_array)
             {
-                int p = s.position - 1;
+                var p = s.position - 1;
                 //突破数+10*卡原来的id，例如神团是30137，满破神团就是301374
                 cardId[p] = s.limit_break_count + s.support_card_id * 10;
             }
@@ -289,8 +289,8 @@ namespace UmamusumeResponseAnalyzer.AI
 
             //到目前为止，headIdConvert写完了
             personDistribution = new int[5, 5];
-            for (int i = 0; i < 5; i++)
-                for (int j = 0; j < 5; j++)
+            for (var i = 0; i < 5; i++)
+                for (var j = 0; j < 5; j++)
                     personDistribution[i, j] = -1;
 
             foreach (var train in @event.data.home_info.command_info_array)
