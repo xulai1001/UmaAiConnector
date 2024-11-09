@@ -72,9 +72,9 @@ namespace UmamusumeResponseAnalyzer.AI
         public int friendship_noncard_reporter;//非卡记者的羁绊       
 
         //单独处理友人卡，因为接近必带。其他友人团队卡的以后再考虑
-        public int friend_type;//0没带友人卡，1 ssr卡，2 r卡
-        public int friend_cardId;   // 单独存放友人卡ID
-        public int friend_personId;//友人卡在persons里的编号
+        //public int friend_type;//0没带友人卡，1 ssr卡，2 r卡
+        //public int friend_cardId;   // 单独存放友人卡ID
+        //public int friend_personId;//友人卡在persons里的编号
         public int friend_stage;//0未点击，1点击还未解锁出行，2已解锁出行
         public int friend_outgoingUsed;//出行已经走了几段了   暂时不考虑其他友人团队卡的出行
 
@@ -233,8 +233,8 @@ namespace UmamusumeResponseAnalyzer.AI
             for (var i = 0; i < 6; i++)
                 persons[i] = new T();
 
-            friend_type = 0;
-            friend_personId = 0;
+            var friend_type = 0;
+            var friend_personId = -1;
             for (var i = 0; i < 6; i++)
             {
                 var personJson = @event.data.chara_info.evaluation_info_array.First(x => x.target_id == i + 1);
@@ -248,6 +248,16 @@ namespace UmamusumeResponseAnalyzer.AI
                         friend_type = 1;
                         break;
                     case 10109://r 理事长
+                        persons[i].personType = 1;
+                        friend_personId = i;
+                        friend_type = 1;
+                        break;
+                    case 30188://ssr 凉花
+                        persons[i].personType = 1;
+                        friend_personId = i;
+                        friend_type = 2;
+                        break;
+                    case 10104://r 凉花
                         persons[i].personType = 1;
                         friend_personId = i;
                         friend_type = 2;
