@@ -27,7 +27,12 @@ namespace UmamusumeResponseAnalyzer.Handler
                         new Layout("干劲").Ratio(3)).Size(3),
                     new Layout("重要信息").Size(5),
                     //new Layout("分割", new Rule()).Size(1),
-                    new Layout("训练信息")  // size 20, 共约30行
+                    new Layout("训练信息"),  // size 20, 共约30行
+                    new Layout("剧本信息").SplitColumns(
+                        new Layout("心得周期").Ratio(3),
+                        new Layout("心得颜色").Ratio(6),
+                        new Layout("心得等级").Ratio(6)
+                        ).Size(3)
                     ).Ratio(4),
                 new Layout("Ext").Ratio(1)
                 );
@@ -244,7 +249,7 @@ namespace UmamusumeResponseAnalyzer.Handler
                 foreach (var row in eventPerf)
                     exTable.AddRow(new Markup(row));
             }
-            exTable.AddRow("asdasdasd");
+            //exTable.AddRow("asdasdasd");
 
             layout["日期"].Update(new Panel($"{turn.Year}{I18N_Year} {turn.Month}{I18N_Month}{turn.HalfMonth}").Expand());
             layout["总属性"].Update(new Panel($"[cyan]总属性: {totalValue}[/]").Expand());
@@ -265,6 +270,19 @@ namespace UmamusumeResponseAnalyzer.Handler
                 critInfos.Add("[aqua]非训练回合[/]");
             }
             layout["重要信息"].Update(new Panel(string.Join(Environment.NewLine, critInfos)).Expand());
+
+            var buffPeriod = turn.Turn % 6; 
+            var buffPeriodColor = buffPeriod switch
+            {
+                < 3 => "green",  // 小于 3 显示绿色
+                4 => "yellow",   // 等于 4 显示黄色
+                _ => "red"       // 其他情况（5 或 6）显示红色
+            };
+            layout["心得周期"].Update(new Panel($"[{buffPeriodColor}]{buffPeriod}/6[/]").Expand());
+            layout["心得颜色"].Update(new Panel($"todo").Expand());
+
+            var gauge_array = @event.data.legend_data_set.gauge_count_array.ToDictionary(x => x.legend_id, x => x.count);
+            layout["心得等级"].Update(new Panel($"[cyan]{gauge_array[9046]}/8[/] [green]{gauge_array[9047]}/8[/] [#ff8080]{gauge_array[9048]}/8[/]"));
 
             layout["Ext"].Update(exTable);
             AnsiConsole.Write(layout);

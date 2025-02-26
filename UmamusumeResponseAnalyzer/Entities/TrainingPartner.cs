@@ -170,6 +170,26 @@ namespace UmamusumeResponseAnalyzer.Entities
                 if (t != null)
                 {
                     var gauge = t.gauge_value;
+
+
+                    //npc人头的属性
+                    var isNPC = t.training_partner_id > 1000;
+                    if (isNPC)
+                    {
+                        var npcType = Database.Names.GetRSupportCardTypeByCharaId(t.training_partner_id);
+                        var npcTypeStr = npcType switch { 101 => "[速]", 102 => "[力]", 103 => "[根]", 105 => "[耐]", 106 => "[智]", 0 => "[友]", _ => "[??]" };
+
+                        Priority = PartnerPriority.需要充电;
+                        
+                        //Name = $"{npcTypeStr}{Name}";
+                        Name = $"{npcTypeStr}NPC".EscapeMarkup();
+                        Shining = gauge == 20 && npcType == GameGlobal.ToTrainId[command.command_id];
+                        if(Shining)
+                        {
+                            Name = $"[#00a0a0]{Name}[/]";
+                        }
+
+                    }
                     if (gauge == 20)
                         Name = $"{Name}[yellow]MAX[/]";
                     else
