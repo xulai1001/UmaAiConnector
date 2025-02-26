@@ -26,13 +26,13 @@ namespace UmamusumeResponseAnalyzer.Handler
                         new Layout("体力").Ratio(6),
                         new Layout("干劲").Ratio(3)).Size(3),
                     new Layout("重要信息").Size(5),
-                    //new Layout("分割", new Rule()).Size(1),
-                    new Layout("训练信息"),  // size 20, 共约30行
                     new Layout("剧本信息").SplitColumns(
                         new Layout("心得周期").Ratio(3),
-                        new Layout("心得颜色").Ratio(6),
-                        new Layout("心得等级").Ratio(6)
-                        ).Size(3)
+                        new Layout("心得等级").Ratio(3),
+                        new Layout("心得颜色").Ratio(6)
+                        ).Size(3),
+                    //new Layout("分割", new Rule()).Size(1),
+                    new Layout("训练信息")  // size 20, 共约30行
                     ).Ratio(4),
                 new Layout("Ext").Ratio(1)
                 );
@@ -271,18 +271,53 @@ namespace UmamusumeResponseAnalyzer.Handler
             }
             layout["重要信息"].Update(new Panel(string.Join(Environment.NewLine, critInfos)).Expand());
 
-            var buffPeriod = turn.Turn % 6; 
+            var buffPeriod = (turn.Turn - 1) % 6 + 1;
             var buffPeriodColor = buffPeriod switch
             {
-                < 3 => "green",  // 小于 3 显示绿色
+                1 => "white", 
+                2 => "white", 
+                3 => "white", 
                 4 => "yellow",   // 等于 4 显示黄色
                 _ => "red"       // 其他情况（5 或 6）显示红色
             };
-            layout["心得周期"].Update(new Panel($"[{buffPeriodColor}]{buffPeriod}/6[/]").Expand());
-            layout["心得颜色"].Update(new Panel($"todo").Expand());
+            layout["心得周期"].Update(new Panel($"心得回合周期 [{buffPeriodColor}]{buffPeriod}[/]/6").Expand());
+
+            if (turn.Turn < 36)
+            {
+                var blueBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 1);
+                var greenBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 2);
+                var redBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 3);
+
+                layout["心得颜色"].Update(new Panel($"当前心得颜色：[cyan]蓝{blueBuffCount}[/] [#00ff00]绿{greenBuffCount}[/] [#ff8080]红{redBuffCount}[/]").Expand());
+            }
+            else
+            {
+                var mainColor =
+                 @event.data.legend_data_set.masterly_bonus_info.info_9046 != null ? 1 :
+                 @event.data.legend_data_set.masterly_bonus_info.info_9047 != null ? 2 :
+                 @event.data.legend_data_set.masterly_bonus_info.info_9048 != null ? 3 : 0;
+
+                var mainColorStr = mainColor switch
+                {
+                    1 => "[cyan]",
+                    2 => "[#00ff00]",
+                    3 => "[#ff8080]",
+                    _ => "[#ffff00]"
+                };
+                var mainColorName = mainColor switch
+                {
+                    1 => "蓝",
+                    2 => "绿",
+                    3 => "红",
+                    _ => "??"       
+                };
+
+                layout["心得颜色"].Update(new Panel($"{mainColorStr}主色：{mainColorName}[/]").Expand());
+
+            }
 
             var gauge_array = @event.data.legend_data_set.gauge_count_array.ToDictionary(x => x.legend_id, x => x.count);
-            layout["心得等级"].Update(new Panel($"[cyan]{gauge_array[9046]}/8[/] [green]{gauge_array[9047]}/8[/] [#ff8080]{gauge_array[9048]}/8[/]"));
+            layout["心得等级"].Update(new Panel($"[cyan]{gauge_array[9046]}/8[/] [#00ff00]{gauge_array[9047]}/8[/] [#ff8080]{gauge_array[9048]}/8[/]").Expand());
 
             layout["Ext"].Update(exTable);
             AnsiConsole.Write(layout);
