@@ -12,5 +12,7 @@ namespace Cute.Http
     {
         [Key("result_code")]
         public int result_code; // 0x10
+        [Key("servertime")]
+        public int servertime; // 0x10
     }
 }
