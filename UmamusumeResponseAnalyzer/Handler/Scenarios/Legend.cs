@@ -14,32 +14,32 @@ namespace UmamusumeResponseAnalyzer.Handler
 {
     public static partial class Handlers
     {
-        public static class LegendToSave
-        {
-
-            public static int lastTurn = 0;
-            public static string lastDataToSave="";
-        }
+        //public static class LegendToSave
+        //{
+        //
+        //    public static int lastTurn = 0;
+        //    public static string lastDataToSave="";
+        //}
 
         public static void ParseLegendCommandInfo(SingleModeCheckEventResponse @event)
         {
-            var thisturn = @event.data.chara_info.turn;
-            if(thisturn>LegendToSave.lastTurn && LegendToSave.lastDataToSave != "")
-            {
-                File.AppendAllText($"ura_statistic.txt", LegendToSave.lastDataToSave+"\n");
-                LegendToSave.lastTurn = thisturn;
-                LegendToSave.lastDataToSave = "";
-            }
-            if(@event.data.legend_data_set!=null && @event.data.legend_data_set.obtainable_buff_id_array != null && @event.data.legend_data_set.obtainable_buff_id_array.Length>0)
-            {
-                var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
-                var datatosave = string.Join(" ", obtainableBuffIdArray);
-                datatosave = $"{@event.data_headers.servertime} {@event.data.chara_info.turn} {datatosave}";
-                LegendToSave.lastTurn = thisturn;
-                LegendToSave.lastDataToSave = datatosave;
-                AnsiConsole.MarkupLine(LegendToSave.lastDataToSave);
+            //var thisturn = @event.data.chara_info.turn;
+            //if(thisturn>LegendToSave.lastTurn && LegendToSave.lastDataToSave != "")
+            //{
+            //    File.AppendAllText($"ura_statistic.txt", LegendToSave.lastDataToSave+"\n");
+            //    LegendToSave.lastTurn = thisturn;
+            //    LegendToSave.lastDataToSave = "";
+            //}
+            //if(@event.data.legend_data_set!=null && @event.data.legend_data_set.obtainable_buff_id_array != null && @event.data.legend_data_set.obtainable_buff_id_array.Length>0)
+            //{
+            //    var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
+            //    var datatosave = string.Join(" ", obtainableBuffIdArray);
+            //    datatosave = $"{@event.data_headers.servertime} {@event.data.chara_info.turn} {datatosave}";
+            //    LegendToSave.lastTurn = thisturn;
+            //    LegendToSave.lastDataToSave = datatosave;
+            //    AnsiConsole.MarkupLine(LegendToSave.lastDataToSave);
 
-            }
+            //}
             if ((@event.data.unchecked_event_array != null && @event.data.unchecked_event_array.Length > 0) || @event.data.race_start_info != null) return;
 
             var layout = new Layout().SplitColumns(
