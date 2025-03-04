@@ -643,6 +643,9 @@ namespace UmamusumeResponseAnalyzer.Handler
                                     case 30207 or 10109:    // 理事长
                                         turnStat.cook_friendAtTrain[trainIdx] = true;
                                         break;
+                                    case 30241:    // 老登团
+                                        turnStat.legend_friendAtTrain[trainIdx] = true;
+                                        break;
                                 }
                             }
                             else if (friendship < 80) // 羁绊不满80，无法触发友情训练标黄

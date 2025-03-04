@@ -54,6 +54,9 @@ namespace UmamusumeResponseAnalyzer.Entities
                         case 30207 or 10109:    // 理事长
                             turnStat.cook_friendAtTrain[trainIdx] = true;
                             break;
+                        case 30241:    // 老登团
+                            turnStat.legend_friendAtTrain[trainIdx] = true;
+                            break;
                     }
                 }
                 Name = Database.Names.GetSupportCard(CardId).Nickname.EscapeMarkup();

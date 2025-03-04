@@ -21,6 +21,27 @@ namespace UmamusumeResponseAnalyzer.Handler
         //    public static string lastDataToSave="";
         //}
 
+        public static int GetCommandInfoStage_legend(SingleModeCheckEventResponse @event)
+        {
+            //if ((@event.data.unchecked_event_array != null && @event.data.unchecked_event_array.Length > 0)) return;
+            if (@event.data.chara_info.playing_state == 1 && (@event.data.unchecked_event_array == null || @event.data.unchecked_event_array.Length == 0))
+            {
+                return 2;
+            } //常规训练
+            else if (@event.data.chara_info.playing_state == 5 && @event.data.unchecked_event_array.Any(x => x.story_id == 400010112)) //选buff
+            {
+                return 5;
+            }
+            else if (@event.data.chara_info.playing_state == 5 && 
+                (@event.data.unchecked_event_array.Any(x => x.story_id == 830241003))) //选团卡事件
+            {
+                return 3;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         public static void ParseLegendCommandInfo(SingleModeCheckEventResponse @event)
         {
             //var thisturn = @event.data.chara_info.turn;
@@ -38,9 +59,11 @@ namespace UmamusumeResponseAnalyzer.Handler
             //    LegendToSave.lastTurn = thisturn;
             //    LegendToSave.lastDataToSave = datatosave;
             //    AnsiConsole.MarkupLine(LegendToSave.lastDataToSave);
-
             //}
-            if ((@event.data.unchecked_event_array != null && @event.data.unchecked_event_array.Length > 0) || @event.data.race_start_info != null) return;
+
+            var stage = GetCommandInfoStage_legend(@event);
+            if (stage == 0) 
+                return;
 
             var layout = new Layout().SplitColumns(
                 new Layout("Main").Size(CommandInfoLayout.Current.MainSectionWidth).SplitRows(
@@ -101,6 +124,8 @@ namespace UmamusumeResponseAnalyzer.Handler
                 { 106, @event.data.home_info.command_info_array[4] }
             };
             var trainStats = new TrainStats[5];
+            var turnStat = @event.data.chara_info.playing_state != 1 ? new TurnStats() : GameStats.stats[turn.Turn];
+
             var failureRate = new Dictionary<int, int>();
 
             // 总属性计算
@@ -179,7 +204,60 @@ namespace UmamusumeResponseAnalyzer.Handler
                 for (var j = 0; j < 5; j++)
                     stats.FiveValueGain[j] = ScoreUtils.ReviseOver1200(turn.Stats[j] + stats.FiveValueGain[j]) - ScoreUtils.ReviseOver1200(turn.Stats[j]);
 
+                if (turn.Turn == 1)
+                {
+                    turnStat.trainLevel[i] = 1;
+                    turnStat.trainLevelCount[i] = 0;
+                }
+                else
+                {
+                    var lastTrainLevel = GameStats.stats[turn.Turn - 1] != null ? GameStats.stats[turn.Turn - 1].trainLevel[i] : 1;
+                    var lastTrainLevelCount = GameStats.stats[turn.Turn - 1] != null ? GameStats.stats[turn.Turn - 1].trainLevelCount[i] : 0;
+
+                    turnStat.trainLevel[i] = lastTrainLevel;
+                    turnStat.trainLevelCount[i] = lastTrainLevelCount;
+                    if (GameStats.stats[turn.Turn - 1] != null &&
+                        GameStats.stats[turn.Turn - 1].playerChoice == GameGlobal.TrainIds[i] &&
+                        !GameStats.stats[turn.Turn - 1].isTrainingFailed &&
+                        !((turn.Turn - 1 >= 37 && turn.Turn - 1 <= 40) || (turn.Turn - 1 >= 61 && turn.Turn - 1 <= 64))
+                        )//上回合点的这个训练，计数+1
+                        turnStat.trainLevelCount[i] += 1;
+                    if (turnStat.trainLevelCount[i] >= 4)
+                    {
+                        turnStat.trainLevelCount[i] -= 4;
+                        turnStat.trainLevel[i] += 1;
+                    }
+                    //检查是否有UAE
+                    if (turn.Turn == 25 || turn.Turn == 49)
+                        turnStat.trainLevelCount[i] += 4;
+                    if (turnStat.trainLevelCount[i] >= 4)
+                    {
+                        turnStat.trainLevelCount[i] -= 4;
+                        turnStat.trainLevel[i] += 1;
+                    }
+
+                    if (turnStat.trainLevel[i] >= 5)
+                    {
+                        turnStat.trainLevel[i] = 5;
+                        turnStat.trainLevelCount[i] = 0;
+                    }
+
+                    var trainlv = @event.data.chara_info.training_level_info_array.First(x => x.command_id == GameGlobal.TrainIds[i]).level;
+                    if (turnStat.trainLevel[i] != trainlv && stage == 2)
+                    {
+                        //可能是半途开启小黑板，也可能是有未知bug
+                        critInfos.Add($"[red]警告：训练等级预测错误，预测{GameGlobal.TrainNames[GameGlobal.TrainIds[i]]}为lv{turnStat.trainLevel[i]}(+{turnStat.trainLevelCount[i]})，实际为lv{trainlv}[/]");
+                        turnStat.trainLevel[i] = trainlv;
+                        turnStat.trainLevelCount[i] = 0;//如果是半途开启小黑板，则会在下一次升级时变成正确的计数
+                    }
+                }
+
                 trainStats[i] = stats;
+                if (stage == 2)
+                {
+                    // 把训练等级信息更新到GameStats
+                    GameStats.stats[turn.Turn] = turnStat;
+                }
             }
 
             var grids = new Grid();
@@ -348,6 +426,15 @@ namespace UmamusumeResponseAnalyzer.Handler
             // 光标倒转一点
             AnsiConsole.Cursor.SetPosition(0, 31);
 
+            if (stage == 5)//选buff阶段
+            {
+                AnsiConsole.MarkupLine("选心得:");
+                var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
+                foreach (var b in obtainableBuffIdArray)
+                    AnsiConsole.MarkupLine($"{b}");
+
+            }
+
             string GaugeColor((int, int) gain) => gain.Item1 switch
             {
                 9046 => $"[#42AEF7]{gain.Item2}[/]",
@@ -361,6 +448,15 @@ namespace UmamusumeResponseAnalyzer.Handler
                 >= 2 => 1,
                 _ => 0
             };
+
+
+
+
+            var gameStatusToSend = new GameStatusSend_Legend(@event);
+            if (gameStatusToSend.islegal)
+            {
+                gameStatusToSend.doSend();
+            }
         }
     }
 }
