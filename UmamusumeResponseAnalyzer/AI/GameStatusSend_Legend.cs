@@ -181,6 +181,21 @@ namespace UmamusumeResponseAnalyzer.AI
                 }
             }
 
+            //统计连续情热了多少回合
+            if (@event.data.chara_info.chara_effect_id_array.Any(x => x == 104))
+            {
+                //统计一下女神情热持续了几回合
+                var continuousTurnNum = 0;
+                for (var i = turn; i >= 1; i--)
+                {
+                    if (GameStats.stats[i] == null || !GameStats.stats[i].legend_isEffect104)
+                        break;
+                    continuousTurnNum++;
+                }
+                friend_qingreTurn = continuousTurnNum;
+            }
+
+
             skillPt = 0;
             try
             {

@@ -78,7 +78,10 @@ namespace UmamusumeResponseAnalyzer.Game
         //public int cook_friendEvent;
         
         // legend团卡
-        public bool[] legend_friendAtTrain; // 友人（凉花）是否在这个训练
+        public bool[] legend_friendAtTrain; // 团卡是否在这个训练
+        public bool legend_isEffect104;//是否为情热状态
+        public bool legend_friendClickEvent;//团卡三选一事件
+        public bool legend_friendClickEventCountConcerned;//非情热，非第一次点击
         //public int cook_friendEvent;
 
         public TurnStats()
@@ -118,7 +121,10 @@ namespace UmamusumeResponseAnalyzer.Game
 
             legend_friendAtTrain = new bool[5];
             for (int j = 0; j < 5; j++) legend_friendAtTrain[j] = false;
-        }
+            legend_isEffect104 = false;
+            legend_friendClickEvent = false;
+            legend_friendClickEventCountConcerned = true;//非情热，非第一次点击
+    }
     }
     public static class GameStats
     {
@@ -420,6 +426,71 @@ namespace UmamusumeResponseAnalyzer.Game
                 }
 
                 AnsiConsole.MarkupLine($"共点了[aqua]{friendClickedTimes}[/]次凉花，加了[aqua]{friendChargedTimes}[/]次体力");
+            }
+            if (whichScenario == (int)ScenarioType.Legend)
+            {
+
+                //友人点了几次，来了几次
+                int friendClickedTimes = 0;
+                int friendChargedTimes = 0; //友人冲了几次体力
+
+                for (int turn = currentTurn; turn >= 1; turn--)
+                {
+                    if (stats[turn] == null)
+                    {
+                        break;
+                    }
+
+                    if (!GameGlobal.TrainIds.Any(x => x == stats[turn].playerChoice)) //没训练
+                        continue;
+                    if (stats[turn].isTrainingFailed)//训练失败
+                        continue;
+                    if (!stats[turn].legend_friendAtTrain[GameGlobal.ToTrainIndex[stats[turn].playerChoice]])
+                        continue;//没点友人
+                    if (!stats[turn].legend_friendClickEventCountConcerned)//启动事件
+                        continue;
+
+                    friendClickedTimes += 1;
+                    if (stats[turn].legend_friendClickEvent)
+                        friendChargedTimes += 1;
+                }
+
+                AnsiConsole.MarkupLine($"共点了[aqua]{friendClickedTimes}[/]次团卡，启动了[aqua]{friendChargedTimes}[/]次");
+
+                //统计女神持续回合数
+                {
+                    int[] contTurns = new int[100];
+                    int maxContTurns = 0;
+                    for (int i = 0; i < 100; i++) { contTurns[i] = 0; }
+
+                    bool isUnfinishedLast = true;//最后一次不完整，不统计
+                    int contTurn = 0;
+                    for (int i = currentTurn; i >= 1; i--)
+                    {
+                        //第一个回合不可能是女神情热，所以这个判断条件没有问题
+                        if (stats[i] == null)
+                        {
+                            break;
+                        }
+                        if (!stats[i].legend_isEffect104)
+                        {
+                            if (!isUnfinishedLast)
+                            {
+                                contTurns[contTurn]++;
+                                if (contTurn > maxContTurns) maxContTurns = contTurn;
+                            }
+                            contTurn = 0;
+                            isUnfinishedLast = false;
+                        }
+                        else contTurn++;
+                    }
+                    string linetoPrint = $"团卡持续回合数统计：";
+                    for (int i = 1; i <= maxContTurns; i++)
+                    {
+                        linetoPrint += $"[green]{i}[/]回合[yellow]{contTurns[i]}[/]次，";
+                    }
+                    AnsiConsole.MarkupLine(linetoPrint);
+                }
             }
         }
         
