@@ -229,8 +229,8 @@ namespace UmamusumeResponseAnalyzer.Handler
                         turnStat.trainLevelCount[i] -= 4;
                         turnStat.trainLevel[i] += 1;
                     }
-                    //检查是否有UAE
-                    if (turn.Turn == 25 || turn.Turn == 49)
+                    //检查是否有剧本全体训练等级+1
+                    if (turn.Turn == 25 || turn.Turn == 37 || turn.Turn == 49)
                         turnStat.trainLevelCount[i] += 4;
                     if (turnStat.trainLevelCount[i] >= 4)
                     {

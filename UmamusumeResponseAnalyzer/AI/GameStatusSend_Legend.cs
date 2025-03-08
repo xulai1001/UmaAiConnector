@@ -266,8 +266,8 @@ namespace UmamusumeResponseAnalyzer.AI
             for (var i = 0; i < 6; i++)
                 persons[i] = new PersonBase();
 
-            var friend_type = 0;
-            var friend_personId = -1;
+            friend_type = 0;
+            friend_personId = -1;
             for (var i = 0; i < 6; i++)
             {
                 var personJson = @event.data.chara_info.evaluation_info_array.First(x => x.target_id == i + 1);
@@ -471,9 +471,9 @@ namespace UmamusumeResponseAnalyzer.AI
                 lg_pickedBuffsNum = lg.obtainable_buff_id_array.Length;
                 lg_pickedBuffs = new int[9];
                 for (int i = 0; i < 9; i++)
-                    lg_pickedBuffs[i] = 0;
+                    lg_pickedBuffs[i] = -1;
                 for (int i = 0; i < lg_pickedBuffsNum; i++)
-                    lg_pickedBuffs[i] = lg.obtainable_buff_id_array[i];
+                    lg_pickedBuffs[i] = GameGlobal.LegendBuffShortId[lg.obtainable_buff_id_array[i]];
 
                 lg_blue_active = false;
                 lg_blue_remainCount = 0;
