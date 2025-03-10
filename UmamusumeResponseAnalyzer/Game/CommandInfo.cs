@@ -24,7 +24,7 @@ namespace UmamusumeResponseAnalyzer.Game
             var training = resp.chara_info.training_level_info_array.FirstOrDefault(x => x.command_id == CommandId);
             TrainLevel = training != default ? training.level : 0;
             var normalCommand = resp.home_info.command_info_array.First(x => x.command_id == CommandId);
-            TrainingPartners = normalCommand.training_partner_array.Select(x => new TrainingPartner(turn, x, normalCommand)).OrderBy(x => x.Priority);
+            TrainingPartners = normalCommand.training_partner_array.Select(x => new TrainingPartner(turn, x, resp, normalCommand)).OrderBy(x => x.Priority);
         }
     }
 }

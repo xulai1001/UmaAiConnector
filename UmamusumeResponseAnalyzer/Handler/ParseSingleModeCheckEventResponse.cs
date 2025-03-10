@@ -64,6 +64,16 @@ namespace UmamusumeResponseAnalyzer.Handler
                     {
                         GameStats.stats[GameStats.currentTurn].uaf_friendEvent = 1;
                     }
+
+
+                    if (i.story_id == 830241001) // 团卡第一次点
+                    {
+                        GameStats.stats[GameStats.currentTurn].legend_friendClickEventCountConcerned = false;
+                    }
+                    if (i.story_id == 830241003) // 团卡三选一
+                    {
+                        GameStats.stats[GameStats.currentTurn].legend_friendClickEvent = true;
+                    }
                 }
 
                 //收录在数据库中

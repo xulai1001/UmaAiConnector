@@ -28,7 +28,7 @@ namespace UmamusumeResponseAnalyzer.Entities
         public string NameAppend { get; } = string.Empty;
         public bool Shining { get; } = false;
 
-        public TrainingPartner(TurnInfo turn, int partner, SingleModeCommandInfo command)
+        public TrainingPartner(TurnInfo turn, int partner, SingleModeCheckEventResponse.CommonResponse resp, SingleModeCommandInfo command)
         {
             Position = partner;
             Friendship = turn.Evaluations[Position].evaluation;
@@ -53,6 +53,9 @@ namespace UmamusumeResponseAnalyzer.Entities
                             break;
                         case 30207 or 10109:    // 理事长
                             turnStat.cook_friendAtTrain[trainIdx] = true;
+                            break;
+                        case 30241:    // 老登团
+                            turnStat.legend_friendAtTrain[trainIdx] = true;
                             break;
                     }
                 }
@@ -87,7 +90,8 @@ namespace UmamusumeResponseAnalyzer.Entities
 
                 if ((CardId == 30137 && turn.GetCommonResponse().chara_info.chara_effect_id_array.Any(x => x == 102)) || //神团
                 (CardId == 30067 && turn.GetCommonResponse().chara_info.chara_effect_id_array.Any(x => x == 101)) || //皇团
-                (CardId == 30081 && turn.GetCommonResponse().chara_info.chara_effect_id_array.Any(x => x == 100)) //天狼星
+                (CardId == 30081 && turn.GetCommonResponse().chara_info.chara_effect_id_array.Any(x => x == 100)) || //天狼星
+                (CardId == 30241 && turn.GetCommonResponse().chara_info.chara_effect_id_array.Any(x => x == 104)) //Legend团
                 )
                 {
                     Shining = true;
@@ -157,6 +161,52 @@ namespace UmamusumeResponseAnalyzer.Entities
             var tips = command.tips_event_partner_array.Intersect(command.training_partner_array);
             if (tips.Contains(Position)) // 有Hint就加个红感叹号，和游戏内表现一样
                 Name = $"[red]![/]{Name}";
+
+            //Legend剧本的粉女神buff的等级条
+            if(turn.IsScenario(ScenarioType.Legend)
+                && resp.legend_data_set != null
+                && resp.legend_data_set.masterly_bonus_info != null
+                && resp.legend_data_set.masterly_bonus_info.info_9048 != null
+                && resp.legend_data_set.masterly_bonus_info.info_9048.friend_gauge_array != null)
+            {
+                var t = resp.legend_data_set.masterly_bonus_info.info_9048.friend_gauge_array.FirstOrDefault(x => x.training_partner_id == Position, null);
+                if (t != null)
+                {
+                    var gauge = t.gauge_value;
+
+
+                    //npc人头的属性
+                    var isNPC = t.training_partner_id > 1000;
+                    if (isNPC)
+                    {
+                        var npcType = Database.Names.GetRSupportCardTypeByCharaId(t.training_partner_id);
+                        var npcTypeStr = npcType switch { 101 => "[速]", 102 => "[力]", 103 => "[根]", 105 => "[耐]", 106 => "[智]", 0 => "[友]", _ => "[??]" };
+
+                        Priority = PartnerPriority.需要充电;
+                        
+                        //Name = $"{npcTypeStr}{Name}";
+                        Name = $"{npcTypeStr}NPC".EscapeMarkup();
+                        Shining = gauge == 20 && npcType == GameGlobal.ToTrainId[command.command_id];
+                        if(Shining)
+                        {
+                            Name = $"[#00a0a0]{Name}[/]";
+                        }
+
+                    }
+                    if (gauge == 20)
+                        Name = $"{Name}[yellow]MAX[/]";
+                    else
+                        Name = $"{Name}[green]{gauge}[/]";
+                }
+                else
+                {
+                    //可能是团卡之类的
+                    //Name = $"{Name}[red]ERR[/]";
+                }
+
+
+
+            }
         }
     }
 }

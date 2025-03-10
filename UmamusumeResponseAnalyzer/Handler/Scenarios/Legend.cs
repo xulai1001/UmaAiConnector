@@ -1,6 +1,7 @@
 ﻿using Gallop;
 using Newtonsoft.Json;
 using Spectre.Console;
+using System;
 using UmamusumeResponseAnalyzer.AI;
 using UmamusumeResponseAnalyzer.Communications.Subscriptions;
 using UmamusumeResponseAnalyzer.Game;
@@ -14,9 +15,56 @@ namespace UmamusumeResponseAnalyzer.Handler
 {
     public static partial class Handlers
     {
+        //public static class LegendToSave
+        //{
+        //
+        //    public static int lastTurn = 0;
+        //    public static string lastDataToSave="";
+        //}
+
+        public static int GetCommandInfoStage_legend(SingleModeCheckEventResponse @event)
+        {
+            //if ((@event.data.unchecked_event_array != null && @event.data.unchecked_event_array.Length > 0)) return;
+            if (@event.data.chara_info.playing_state == 1 && (@event.data.unchecked_event_array == null || @event.data.unchecked_event_array.Length == 0))
+            {
+                return 2;
+            } //常规训练
+            else if (@event.data.chara_info.playing_state == 5 && @event.data.unchecked_event_array.Any(x => x.story_id == 400010112)) //选buff
+            {
+                return 5;
+            }
+            else if (@event.data.chara_info.playing_state == 5 && 
+                (@event.data.unchecked_event_array.Any(x => x.story_id == 830241003))) //选团卡事件
+            {
+                return 3;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         public static void ParseLegendCommandInfo(SingleModeCheckEventResponse @event)
         {
-            if ((@event.data.unchecked_event_array != null && @event.data.unchecked_event_array.Length > 0) || @event.data.race_start_info != null) return;
+            //var thisturn = @event.data.chara_info.turn;
+            //if(thisturn>LegendToSave.lastTurn && LegendToSave.lastDataToSave != "")
+            //{
+            //    File.AppendAllText($"ura_statistic.txt", LegendToSave.lastDataToSave+"\n");
+            //    LegendToSave.lastTurn = thisturn;
+            //    LegendToSave.lastDataToSave = "";
+            //}
+            //if(@event.data.legend_data_set!=null && @event.data.legend_data_set.obtainable_buff_id_array != null && @event.data.legend_data_set.obtainable_buff_id_array.Length>0)
+            //{
+            //    var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
+            //    var datatosave = string.Join(" ", obtainableBuffIdArray);
+            //    datatosave = $"{@event.data_headers.servertime} {@event.data.chara_info.turn} {datatosave}";
+            //    LegendToSave.lastTurn = thisturn;
+            //    LegendToSave.lastDataToSave = datatosave;
+            //    AnsiConsole.MarkupLine(LegendToSave.lastDataToSave);
+            //}
+
+            var stage = GetCommandInfoStage_legend(@event);
+            if (stage == 0) 
+                return;
 
             var layout = new Layout().SplitColumns(
                 new Layout("Main").Size(CommandInfoLayout.Current.MainSectionWidth).SplitRows(
@@ -26,11 +74,17 @@ namespace UmamusumeResponseAnalyzer.Handler
                         new Layout("体力").Ratio(6),
                         new Layout("干劲").Ratio(3)).Size(3),
                     new Layout("重要信息").Size(5),
+                    new Layout("剧本信息").SplitColumns(
+                        new Layout("心得周期").Ratio(3),
+                        new Layout("心得等级").Ratio(3),
+                        new Layout("心得颜色").Ratio(6)
+                        ).Size(3),
                     //new Layout("分割", new Rule()).Size(1),
                     new Layout("训练信息")  // size 20, 共约30行
                     ).Ratio(4),
                 new Layout("Ext").Ratio(1)
                 );
+            var noTrainingTable = false;
             var critInfos = new List<string>();
             var turn = new TurnInfoLegend(@event.data);
             var eventLegendDataset = @event.data.legend_data_set;
@@ -72,6 +126,8 @@ namespace UmamusumeResponseAnalyzer.Handler
                 { 106, @event.data.home_info.command_info_array[4] }
             };
             var trainStats = new TrainStats[5];
+            var turnStat = @event.data.chara_info.playing_state != 1 ? new TurnStats() : GameStats.stats[turn.Turn];
+
             var failureRate = new Dictionary<int, int>();
 
             // 总属性计算
@@ -150,88 +206,170 @@ namespace UmamusumeResponseAnalyzer.Handler
                 for (var j = 0; j < 5; j++)
                     stats.FiveValueGain[j] = ScoreUtils.ReviseOver1200(turn.Stats[j] + stats.FiveValueGain[j]) - ScoreUtils.ReviseOver1200(turn.Stats[j]);
 
+                if (turn.Turn == 1)
+                {
+                    turnStat.trainLevel[i] = 1;
+                    turnStat.trainLevelCount[i] = 0;
+                }
+                else
+                {
+                    var lastTrainLevel = GameStats.stats[turn.Turn - 1] != null ? GameStats.stats[turn.Turn - 1].trainLevel[i] : 1;
+                    var lastTrainLevelCount = GameStats.stats[turn.Turn - 1] != null ? GameStats.stats[turn.Turn - 1].trainLevelCount[i] : 0;
+
+                    turnStat.trainLevel[i] = lastTrainLevel;
+                    turnStat.trainLevelCount[i] = lastTrainLevelCount;
+                    if (GameStats.stats[turn.Turn - 1] != null &&
+                        GameStats.stats[turn.Turn - 1].playerChoice == GameGlobal.TrainIds[i] &&
+                        !GameStats.stats[turn.Turn - 1].isTrainingFailed &&
+                        !((turn.Turn - 1 >= 37 && turn.Turn - 1 <= 40) || (turn.Turn - 1 >= 61 && turn.Turn - 1 <= 64))
+                        )//上回合点的这个训练，计数+1
+                        turnStat.trainLevelCount[i] += 1;
+                    if (turnStat.trainLevelCount[i] >= 4)
+                    {
+                        turnStat.trainLevelCount[i] -= 4;
+                        turnStat.trainLevel[i] += 1;
+                    }
+                    //检查是否有剧本全体训练等级+1
+                    if (turn.Turn == 25 || turn.Turn == 37 || turn.Turn == 49)
+                        turnStat.trainLevelCount[i] += 4;
+                    if (turnStat.trainLevelCount[i] >= 4)
+                    {
+                        turnStat.trainLevelCount[i] -= 4;
+                        turnStat.trainLevel[i] += 1;
+                    }
+
+                    if (turnStat.trainLevel[i] >= 5)
+                    {
+                        turnStat.trainLevel[i] = 5;
+                        turnStat.trainLevelCount[i] = 0;
+                    }
+
+                    var trainlv = @event.data.chara_info.training_level_info_array.First(x => x.command_id == GameGlobal.TrainIds[i]).level;
+                    if (turnStat.trainLevel[i] != trainlv && stage == 2)
+                    {
+                        //可能是半途开启小黑板，也可能是有未知bug
+                        critInfos.Add($"[red]警告：训练等级预测错误，预测{GameGlobal.TrainNames[GameGlobal.TrainIds[i]]}为lv{turnStat.trainLevel[i]}(+{turnStat.trainLevelCount[i]})，实际为lv{trainlv}[/]");
+                        turnStat.trainLevel[i] = trainlv;
+                        turnStat.trainLevelCount[i] = 0;//如果是半途开启小黑板，则会在下一次升级时变成正确的计数
+                    }
+                }
+
                 trainStats[i] = stats;
             }
-
-            var grids = new Grid();
-            grids.AddColumns(6);
-
-            var failureRateStr = new string[5];
-            //失败率>=40%标红、>=20%(有可能大失败)标DarkOrange、>0%标黄
-            for (var i = 0; i < 5; i++)
+            if (stage == 2)
             {
-                var thisFailureRate = failureRate[GameGlobal.TrainIds[i]];
-                failureRateStr[i] = thisFailureRate switch
-                {
-                    >= 40 => $"[red]({thisFailureRate}%)[/]",
-                    >= 20 => $"[darkorange]({thisFailureRate}%)[/]",
-                    > 0 => $"[yellow]({thisFailureRate}%)[/]",
-                    _ => string.Empty
-                };
+                // 把训练等级信息更新到GameStats
+                turnStat.fiveTrainStats = trainStats;
+                GameStats.stats[turn.Turn] = turnStat;
             }
-            var commands = turn.CommandInfoArray.Select(command =>
+
+            //训练或比赛阶段
+            if (stage == 2)
             {
-                var table = new Table()
-                .AddColumn(command.TrainIndex switch
+                var grids = new Grid();
+                grids.AddColumns(6);
+
+                var failureRateStr = new string[5];
+                //失败率>=40%标红、>=20%(有可能大失败)标DarkOrange、>0%标黄
+                for (var i = 0; i < 5; i++)
                 {
-                    1 => $"{I18N_Speed}{failureRateStr[0]}",
-                    2 => $"{I18N_Stamina}{failureRateStr[1]}",
-                    3 => $"{I18N_Power}{failureRateStr[2]}",
-                    4 => $"{I18N_Nuts}{failureRateStr[3]}",
-                    5 => $"{I18N_Wiz}{failureRateStr[4]}"
-                });
-
-                var currentStat = turn.StatsRevised[command.TrainIndex - 1];
-                var statUpToMax = turn.MaxStatsRevised[command.TrainIndex - 1] - currentStat;
-                table.AddRow(I18N_CurrentRemainStat);
-                table.AddRow($"{currentStat}:{statUpToMax switch
-                {
-                    > 400 => $"{statUpToMax}",
-                    > 200 => $"[yellow]{statUpToMax}[/]",
-                    _ => $"[red]{statUpToMax}[/]"
-                }}");
-                table.AddRow(new Rule());
-
-                var afterVital = trainStats[command.TrainIndex - 1].VitalGain + turn.Vital;
-                table.AddRow(afterVital switch
-                {
-                    < 30 => $"{I18N_Vital}:[red]{afterVital}[/]/{turn.MaxVital}",
-                    < 50 => $"{I18N_Vital}:[darkorange]{afterVital}[/]/{turn.MaxVital}",
-                    < 70 => $"{I18N_Vital}:[yellow]{afterVital}[/]/{turn.MaxVital}",
-                    _ => $"{I18N_Vital}:[green]{afterVital}[/]/{turn.MaxVital}"
-                });
-
-                var gainGauge = turn.CommandGauges[command.CommandId];
-                gainGauge.Gauge += turn.GaugeCountDictonary[gainGauge.Legend];
-                var preStar = StarCount(turn.GaugeCountDictonary[gainGauge.Legend]);
-                var starDiff = StarCount(gainGauge.Gauge) - preStar;
-                table.AddRow($"Lv{command.TrainLevel} | {GaugeColor(gainGauge)}/8 {string.Concat(string.Join(string.Empty, Enumerable.Repeat("★", preStar)), string.Join(string.Empty, Enumerable.Repeat("☆", starDiff)))}");
-                table.AddRow(new Rule());
-
-                var stats = trainStats[command.TrainIndex - 1];
-                var score = stats.FiveValueGain.Sum();
-                if (score == trainStats.Max(x => x.FiveValueGain.Sum()))
-                    table.AddRow($"{I18N_StatSimple}:[aqua]{score}[/]|Pt:{stats.PtGain}");
-                else
-                    table.AddRow($"{I18N_StatSimple}:{score}|Pt:{stats.PtGain}");
-
-                foreach (var trainingPartner in command.TrainingPartners)
-                {
-                    table.AddRow(trainingPartner.Name);
-                    if (trainingPartner.Shining)
-                        table.BorderColor(Color.LightGreen);
+                    var thisFailureRate = failureRate[GameGlobal.TrainIds[i]];
+                    failureRateStr[i] = thisFailureRate switch
+                    {
+                        >= 40 => $"[red]({thisFailureRate}%)[/]",
+                        >= 20 => $"[darkorange]({thisFailureRate}%)[/]",
+                        > 0 => $"[yellow]({thisFailureRate}%)[/]",
+                        _ => string.Empty
+                    };
                 }
-                for (var i = 5 - command.TrainingPartners.Count(); i > 0; i--)
+                var commands = turn.CommandInfoArray.Select(command =>
                 {
-                    table.AddRow(string.Empty);
-                }
-                table.AddRow(new Rule());
-                var matText = GameGlobal.CookMaterialName[command.TrainIndex - 1];
+                    var table = new Table()
+                    .AddColumn(command.TrainIndex switch
+                    {
+                        1 => $"{I18N_Speed}{failureRateStr[0]}",
+                        2 => $"{I18N_Stamina}{failureRateStr[1]}",
+                        3 => $"{I18N_Power}{failureRateStr[2]}",
+                        4 => $"{I18N_Nuts}{failureRateStr[3]}",
+                        5 => $"{I18N_Wiz}{failureRateStr[4]}"
+                    });
 
-                return new Padder(table).Padding(0, 0, 0, 0);
-            }); // foreach command
-            grids.AddRow([.. commands]);
-            layout["训练信息"].Update(grids);
+                    var currentStat = turn.StatsRevised[command.TrainIndex - 1];
+                    var statUpToMax = turn.MaxStatsRevised[command.TrainIndex - 1] - currentStat;
+                    table.AddRow(I18N_CurrentRemainStat);
+                    table.AddRow($"{currentStat}:{statUpToMax switch
+                    {
+                        > 400 => $"{statUpToMax}",
+                        > 200 => $"[yellow]{statUpToMax}[/]",
+                        _ => $"[red]{statUpToMax}[/]"
+                    }}");
+                    table.AddRow(new Rule());
+
+                    var afterVital = trainStats[command.TrainIndex - 1].VitalGain + turn.Vital;
+                    table.AddRow(afterVital switch
+                    {
+                        < 30 => $"{I18N_Vital}:[red]{afterVital}[/]/{turn.MaxVital}",
+                        < 50 => $"{I18N_Vital}:[darkorange]{afterVital}[/]/{turn.MaxVital}",
+                        < 70 => $"{I18N_Vital}:[yellow]{afterVital}[/]/{turn.MaxVital}",
+                        _ => $"{I18N_Vital}:[green]{afterVital}[/]/{turn.MaxVital}"
+                    });
+
+                    var gainGauge = turn.CommandGauges[command.CommandId];
+                    gainGauge.Gauge += turn.GaugeCountDictonary[gainGauge.Legend];
+                    var preStar = StarCount(turn.GaugeCountDictonary[gainGauge.Legend]);
+                    var starDiff = StarCount(gainGauge.Gauge) - preStar;
+                    table.AddRow($"Lv{command.TrainLevel} | {GaugeColor(gainGauge)}/8 {string.Concat(string.Join(string.Empty, Enumerable.Repeat("★", preStar)), string.Join(string.Empty, Enumerable.Repeat("☆", starDiff)))}");
+                    table.AddRow(new Rule());
+
+                    var stats = trainStats[command.TrainIndex - 1];
+                    var score = stats.FiveValueGain.Sum();
+                    if (score == trainStats.Max(x => x.FiveValueGain.Sum()))
+                        table.AddRow($"{I18N_StatSimple}:[aqua]{score}[/]|Pt:{stats.PtGain}");
+                    else
+                        table.AddRow($"{I18N_StatSimple}:{score}|Pt:{stats.PtGain}");
+
+                    foreach (var trainingPartner in command.TrainingPartners)
+                    {
+                        table.AddRow(trainingPartner.Name);
+                        if (trainingPartner.Shining)
+                            table.BorderColor(Color.LightGreen);
+                    }
+                    for (var i = 5 - command.TrainingPartners.Count(); i > 0; i--)
+                    {
+                        table.AddRow(string.Empty);
+                    }
+                    table.AddRow(new Rule());
+                    var matText = GameGlobal.CookMaterialName[command.TrainIndex - 1];
+
+                    return new Padder(table).Padding(0, 0, 0, 0);
+                }); // foreach command
+                grids.AddRow([.. commands]);
+                layout["训练信息"].Update(grids);
+
+                //女神情热状态，不统计女神召唤次数
+                if (@event.data.chara_info.chara_effect_id_array.Any(x => x == 104))
+                {
+                    turnStat.legend_friendClickEventCountConcerned= false;
+                    turnStat.legend_isEffect104 = true;
+                    //统计一下女神情热持续了几回合
+                    var continuousTurnNum = 0;
+                    for (var i = turn.Turn; i >= 1; i--)
+                    {
+                        if (GameStats.stats[i] == null || !GameStats.stats[i].legend_isEffect104)
+                            break;
+                        continuousTurnNum++;
+                    }
+                    AnsiConsole.MarkupLine($"团卡彩圈已持续[green]{continuousTurnNum}[/]回合");
+                }
+            }
+            else
+            {
+                var grids = new Grid();
+                grids.AddColumns(1);
+                grids.AddRow([$"非训练阶段，stage={stage}"]);
+                layout["训练信息"].Update(grids);
+                noTrainingTable = true;
+            }
 
             // 额外信息
             var exTable = new Table().AddColumn("Extras");
@@ -244,7 +382,7 @@ namespace UmamusumeResponseAnalyzer.Handler
                 foreach (var row in eventPerf)
                     exTable.AddRow(new Markup(row));
             }
-            exTable.AddRow("asdasdasd");
+            //exTable.AddRow("asdasdasd");
 
             layout["日期"].Update(new Panel($"{turn.Year}{I18N_Year} {turn.Month}{I18N_Month}{turn.HalfMonth}").Expand());
             layout["总属性"].Update(new Panel($"[cyan]总属性: {totalValue}[/]").Expand());
@@ -266,10 +404,74 @@ namespace UmamusumeResponseAnalyzer.Handler
             }
             layout["重要信息"].Update(new Panel(string.Join(Environment.NewLine, critInfos)).Expand());
 
+            var buffPeriod = (turn.Turn - 1) % 6 + 1;
+            var buffPeriodColor = buffPeriod switch
+            {
+                1 => "white", 
+                2 => "white", 
+                3 => "white", 
+                4 => "yellow",   // 等于 4 显示黄色
+                _ => "red"       // 其他情况（5 或 6）显示红色
+            };
+            layout["心得周期"].Update(new Panel($"心得回合周期 [{buffPeriodColor}]{buffPeriod}[/]/6").Expand());
+
+            if (turn.Turn <= 36)
+            {
+                var blueBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 1);
+                var greenBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 2);
+                var redBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 3);
+
+                layout["心得颜色"].Update(new Panel($"当前心得颜色：[cyan]蓝{blueBuffCount}[/] [#00ff00]绿{greenBuffCount}[/] [#ff8080]红{redBuffCount}[/]").Expand());
+            }
+            else
+            {
+                var mainColor =
+                 @event.data.legend_data_set.masterly_bonus_info.info_9046 != null ? 1 :
+                 @event.data.legend_data_set.masterly_bonus_info.info_9047 != null ? 2 :
+                 @event.data.legend_data_set.masterly_bonus_info.info_9048 != null ? 3 : 0;
+
+                var mainColorStr = mainColor switch
+                {
+                    1 => "[cyan]",
+                    2 => "[#00ff00]",
+                    3 => "[#ff8080]",
+                    _ => "[#ffff00]"
+                };
+                var mainColorName = mainColor switch
+                {
+                    1 => "蓝",
+                    2 => "绿",
+                    3 => "红",
+                    _ => "??"       
+                };
+
+                layout["心得颜色"].Update(new Panel($"{mainColorStr}主色：{mainColorName}[/]").Expand());
+
+            }
+
+            var gauge_array = @event.data.legend_data_set.gauge_count_array.ToDictionary(x => x.legend_id, x => x.count);
+            layout["心得等级"].Update(new Panel($"[cyan]{gauge_array[9046]}/8[/] [#00ff00]{gauge_array[9047]}/8[/] [#ff8080]{gauge_array[9048]}/8[/]").Expand());
+
             layout["Ext"].Update(exTable);
+
+            GameStats.Print();
+
             AnsiConsole.Write(layout);
             // 光标倒转一点
-            AnsiConsole.Cursor.SetPosition(0, 31);
+            if (noTrainingTable)
+                AnsiConsole.Cursor.SetPosition(0, 15);
+            else
+                AnsiConsole.Cursor.SetPosition(0, 31);
+
+
+            if (stage == 5)//选buff阶段
+            {
+                AnsiConsole.MarkupLine("选心得:");
+                var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
+                foreach (var b in obtainableBuffIdArray)
+                    AnsiConsole.MarkupLine($"{b}");
+
+            }
 
             string GaugeColor((int, int) gain) => gain.Item1 switch
             {
@@ -284,6 +486,15 @@ namespace UmamusumeResponseAnalyzer.Handler
                 >= 2 => 1,
                 _ => 0
             };
+
+
+
+
+            var gameStatusToSend = new GameStatusSend_Legend(@event);
+            if (gameStatusToSend.islegal)
+            {
+                gameStatusToSend.doSend();
+            }
         }
     }
 }
