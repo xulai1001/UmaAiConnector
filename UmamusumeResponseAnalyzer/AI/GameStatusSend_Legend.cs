@@ -377,8 +377,8 @@ namespace UmamusumeResponseAnalyzer.AI
                 if (friendJson.is_outing == 1)
                 {
                     friend_stage = 2;
-                    friend_outgoingUsed[0] = friendJson.group_outing_info_array.First(x => x.chara_id == 9046).story_step > 0;
-                    friend_outgoingUsed[1] = friendJson.group_outing_info_array.First(x => x.chara_id == 9047).story_step > 0;
+                    friend_outgoingUsed[0] = friendJson.group_outing_info_array.First(x => x.chara_id == 9047).story_step > 0;
+                    friend_outgoingUsed[1] = friendJson.group_outing_info_array.First(x => x.chara_id == 9046).story_step > 0;
                     friend_outgoingUsed[2] = friendJson.group_outing_info_array.First(x => x.chara_id == 9048).story_step > 0;
                     friend_outgoingUsed[3] = friendJson.story_step > 0;
                     friend_outgoingUsed[4] = friendJson.story_step > 1;
