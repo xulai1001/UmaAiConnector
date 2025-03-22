@@ -486,6 +486,10 @@ namespace UmamusumeResponseAnalyzer.AI
 
                 if (lg_mainColor == 0)
                 {
+                    lg_blue_active = lg.masterly_bonus_info.info_9046.remain_count > 0;
+                    lg_blue_remainCount = lg.masterly_bonus_info.info_9046.remain_count;
+                    lg_blue_currentStepCount = lg.masterly_bonus_info.info_9046.current_step_count;
+                    lg_blue_canExtendCount = lg.masterly_bonus_info.info_9046.can_extend_count;
                 }
                 else if (lg_mainColor == 1)
                 {
