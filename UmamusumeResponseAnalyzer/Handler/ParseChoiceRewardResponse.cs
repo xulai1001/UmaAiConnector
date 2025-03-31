@@ -66,7 +66,9 @@ namespace UmamusumeResponseAnalyzer.Handler
                         }   // switch
                     }
                     while (effect_text.Count < 3) effect_text.Add("");
-                    return string.Format(info.text, effect_text[0].Replace("[", "「").Replace("]", "」"), effect_text[1].Replace("[", "「").Replace("]", "」"));
+                    for (var i = 0; i < 3; ++i)
+                        effect_text[i] = effect_text[i].Replace("[", "「").Replace("]", "」");
+                    return string.Format(info.text, effect_text[0], effect_text[1], effect_text[2]);
                 }
                 catch
                 {
@@ -185,7 +187,7 @@ namespace UmamusumeResponseAnalyzer.Handler
             { 5, "智力" },
             { 10, "体力" },
             { 20, "干劲" },
-            { 30, "技能点数" }
+            { 30, "技能点" }
         }.ToFrozenDictionary();
     }
 
