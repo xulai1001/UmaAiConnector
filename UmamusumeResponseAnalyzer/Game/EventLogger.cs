@@ -110,8 +110,8 @@ namespace UmamusumeResponseAnalyzer.Game
     public static class EventLogger
     {
         public const int MinEventStrength = 25;
-        // 排除佐岳充电,SS,继承,第三年凯旋门（输/赢）,以及无事发生直接到下一回合的情况
-        public static readonly int[] ExcludedEvents = [809043003, 400006112, 400000040, 400006474, 400006439, -1];
+        // 排除佐岳充电,SS,继承,老登三选一,第三年凯旋门（输/赢）,以及无事发生直接到下一回合的情况
+        public static readonly int[] ExcludedEvents = [809043003, 400006112, 400000040, 400006474, 400006439, 830241003, - 1];
         // 友人和团队卡不计入连续事件，这里仅排除这几个
         public static readonly int[] ExcludedFriendCards = [30160, 30137, 30067, 30052, 10104, 30188, 10109, 30207, 30241];
         // 这些回合不能触发连续事件
@@ -128,6 +128,8 @@ namespace UmamusumeResponseAnalyzer.Game
         public static int SuccessEventSuccessCount = 0; // 成功数
         public static int CurrentScenario = 0;  // 记录当前剧本，用于判断成功事件
         public static List<int> InheritStats;   // 两次继承属性
+        public static Dictionary<int, SkillTips> lastSkillTips;   // 上一次的Hint表
+        public static Dictionary<int, Gallop.SkillData> lastSkill;  // 上一次的技能表
 
         public static LogValue LastValue;   // 前一次调用时的总属性
         public static LogEvent LastEvent;   // 本次调用时已经结束的事件
@@ -211,6 +213,57 @@ namespace UmamusumeResponseAnalyzer.Game
                 LastEvent.SelectIndex = (int)@event.data.select_index;
             }
 
+            // 获取技能表
+            if (IsStart && @event.data.chara_info != null)
+            {
+                var currentSkillTip = @event.data.chara_info.skill_tips_array.ToDictionary(x => x.group_id * 10 + x.rarity);
+                var currentSkill = @event.data.chara_info.skill_array.ToDictionary(x => x.skill_id);
+                var newSkills = new List<string>();
+                var newTips = new List<string>();
+
+                if (lastSkill != null) {
+                    foreach (var k in currentSkill.Keys) {
+                        if (!lastSkill.ContainsKey(k) || lastSkill[k].level != currentSkill[k].level)
+                        {
+                            var skill = currentSkill[k];
+                            var name = SkillManagerGenerator.Default[skill.skill_id]?.Name ?? $"#{skill.skill_id}";
+                            //Print($"[violet]习得技能 {name}[/]");
+                            newSkills.Add(name);
+                        }                     
+                    }
+                    if (newSkills.Count() > 0)
+                        Print($"[violet]习得技能: {string.Join(", ", newSkills)}[/]");
+                }
+                if (lastSkillTips != null)
+                {
+                    foreach (var k in currentSkillTip.Keys)
+                    {
+                        if (!lastSkillTips.ContainsKey(k) || lastSkillTips[k].level != currentSkillTip[k].level)
+                        {
+                            var skill = currentSkillTip[k];
+                            var old_level = 0;
+                            if (lastSkillTips.TryGetValue(k, out var v)) {
+                                old_level = v.level;
+                            }
+                            var name = $"#{skill.group_id}, {skill.rarity}, {skill.level}";
+                            var sks = SkillManagerGenerator.Default[(skill.group_id, skill.rarity)];
+                            if (sks != null && sks.Count() >= 1)
+                            {
+                                var which = sks[0].Name.Contains("◎") ? 1 : 0;  // 排除双圈
+                                name = sks[which].Name;
+                            }
+
+                            Print($"[violet]习得Hint {name} Lv.{old_level} -> {skill.level}[/]");
+                            newTips.Add($"{name} Lv.{old_level} -> {skill.level}");
+                        }        
+                    }
+                    //Print($"[violet]习得Hint: {string.Join(", ", newTips)}[/]");
+                }
+
+                lastSkill = currentSkill;
+                lastSkillTips = currentSkillTip;
+            }
+
             if (IsStart && @event.data.unchecked_event_array != null)
             {
                 // 获得上一个事件的属性并保存
@@ -275,7 +328,12 @@ namespace UmamusumeResponseAnalyzer.Game
                     // 分析特殊事件
                     if (LastEvent.StoryId == 400000040)    // 继承
                     {
-                        Print($"[yellow]本次继承属性：{LastEvent.Stats}, Pt: {LastEvent.Pt}[/]");
+                        var color = "yellow";
+                        if (LastEvent.Stats < 126)
+                            color = "red";
+                        else if (LastEvent.Stats >= 192)
+                            color = "green";
+                        Print($"[{color}]本次继承属性：{LastEvent.Stats}, Pt: {LastEvent.Pt}[/]");
                         InheritStats.Add(LastEvent.Stats);
                     }
                 }
@@ -330,8 +388,8 @@ namespace UmamusumeResponseAnalyzer.Game
             if (CardEventCount > 0)
             {
                 // https://x.com/Alefrain_ht/status/1811300886737797511/photo/3
-                // 田园杯基础走完率从38%上升到67%
-                var p = (scenario == 8 ? 0.3 : 0.25);
+                // 凯旋门比其他剧本高5%
+                var p = (scenario == 6 ? 0.35 : 0.3);
                 var n = (GameStats.currentTurn - InitTurn + 1) - ExcludedTurns.Count(x => x >= InitTurn && x <= GameStats.currentTurn);
                 //(p(x<=k-1) + p(x<=k)) / 2
                 var bn = Binomial.CDF(p, n, CardEventCount);

@@ -65,6 +65,9 @@ namespace UmamusumeResponseAnalyzer.Handler
             var stage = GetCommandInfoStage_legend(@event);
             if (stage == 0) 
                 return;
+            // 载入剧本Buff数据csv
+            if (GameGlobal.LegendBuffInfo.Count == 0)
+                GameGlobal.LoadLegendBuffs();
 
             var layout = new Layout().SplitColumns(
                 new Layout("Main").Size(CommandInfoLayout.Current.MainSectionWidth).SplitRows(
@@ -315,10 +318,12 @@ namespace UmamusumeResponseAnalyzer.Handler
                     });
 
                     var gainGauge = turn.CommandGauges[command.CommandId];
-                    gainGauge.Gauge += turn.GaugeCountDictonary[gainGauge.Legend];
+                    //gainGauge.Gauge += turn.GaugeCountDictonary[gainGauge.Legend];
                     var preStar = StarCount(turn.GaugeCountDictonary[gainGauge.Legend]);
                     var starDiff = StarCount(gainGauge.Gauge) - preStar;
-                    table.AddRow($"Lv{command.TrainLevel} | {GaugeColor(gainGauge)}/8 {string.Concat(string.Join(string.Empty, Enumerable.Repeat("★", preStar)), string.Join(string.Empty, Enumerable.Repeat("☆", starDiff)))}");
+                    var gaugeId = gainGauge.Legend - 9045;
+                    var gaugeText = $"{mainColorText(gaugeId)}{mainColorName(gaugeId)} {turn.GaugeCountDictonary[gainGauge.Legend]}+{gainGauge.Gauge}[/]";
+                    table.AddRow($"Lv{command.TrainLevel} | {gaugeText}");
                     table.AddRow(new Rule());
 
                     var stats = trainStats[command.TrainIndex - 1];
@@ -415,38 +420,20 @@ namespace UmamusumeResponseAnalyzer.Handler
             };
             layout["心得周期"].Update(new Panel($"心得回合周期 [{buffPeriodColor}]{buffPeriod}[/]/6").Expand());
 
-            if (turn.Turn <= 36)
-            {
-                var blueBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 1);
-                var greenBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 2);
-                var redBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 3);
+            // 改为一直显示
+            var blueBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 1);
+            var greenBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 2);
+            var redBuffCount = @event.data.legend_data_set.buff_info_array.Count(x => x.buff_id / 1000 == 3);
+            layout["心得颜色"].Update(new Panel($"当前心得颜色：[cyan]蓝{blueBuffCount}[/] [#00ff00]绿{greenBuffCount}[/] [#ff8080]红{redBuffCount}[/]").Expand());
 
-                layout["心得颜色"].Update(new Panel($"当前心得颜色：[cyan]蓝{blueBuffCount}[/] [#00ff00]绿{greenBuffCount}[/] [#ff8080]红{redBuffCount}[/]").Expand());
-            }
-            else
+            if (turn.Turn > 36)
             {
                 var mainColor =
                  @event.data.legend_data_set.masterly_bonus_info.info_9046 != null ? 1 :
                  @event.data.legend_data_set.masterly_bonus_info.info_9047 != null ? 2 :
                  @event.data.legend_data_set.masterly_bonus_info.info_9048 != null ? 3 : 0;
 
-                var mainColorStr = mainColor switch
-                {
-                    1 => "[cyan]",
-                    2 => "[#00ff00]",
-                    3 => "[#ff8080]",
-                    _ => "[#ffff00]"
-                };
-                var mainColorName = mainColor switch
-                {
-                    1 => "蓝",
-                    2 => "绿",
-                    3 => "红",
-                    _ => "??"       
-                };
-
-                layout["心得颜色"].Update(new Panel($"{mainColorStr}主色：{mainColorName}[/]").Expand());
-
+                layout["心得颜色"].Update(new Panel($"{mainColorText(mainColor)}主色：{mainColorName(mainColor)}[/]").Expand());
             }
 
             var gauge_array = @event.data.legend_data_set.gauge_count_array.ToDictionary(x => x.legend_id, x => x.count);
@@ -463,13 +450,22 @@ namespace UmamusumeResponseAnalyzer.Handler
             else
                 AnsiConsole.Cursor.SetPosition(0, 31);
 
-
             if (stage == 5)//选buff阶段
             {
-                AnsiConsole.MarkupLine("选心得:");
+                AnsiConsole.MarkupLine("选心得: [yellow](注意！顺序和游戏中不同)[/]");
                 var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
                 foreach (var b in obtainableBuffIdArray)
-                    AnsiConsole.MarkupLine($"{b}");
+                {
+                    var info = GameGlobal.LegendBuffInfo.Find(x => x.buffId == b);
+                    if (info != null)
+                    {
+                        AnsiConsole.MarkupLine($"{mainColorText(info.color+1)}☆{info.rank} {info.name} - {info.cn_effect}[/]");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"{b}");
+                    }                    
+                }
 
             }
 
@@ -478,6 +474,20 @@ namespace UmamusumeResponseAnalyzer.Handler
                 9046 => $"[#42AEF7]{gain.Item2}[/]",
                 9047 => $"[#0BCC58]{gain.Item2}[/]",
                 9048 => $"[#F765A4]{gain.Item2}[/]"
+            };
+            string mainColorText(int which) => which switch
+            {
+                1 => "[cyan]",
+                2 => "[#00ff00]",
+                3 => "[#ff8080]",
+                _ => "[#ffff00]"
+            };
+            string mainColorName(int which) => which switch
+            {
+                1 => "蓝",
+                2 => "绿",
+                3 => "红",
+                _ => "??"
             };
             int StarCount(int gauge) => gauge switch
             {
