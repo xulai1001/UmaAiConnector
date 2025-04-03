@@ -109,6 +109,14 @@ namespace UmamusumeResponseAnalyzer
                     {
                         Handlers.ParseChoiceRequest(dyn.ToObject<Gallop.SingleModeChoiceRequest>());
                     }
+                    if (dyn.buff_id is not null && GameGlobal.LegendBuffInfo.Count > 0)
+                    {
+                        var buff = GameGlobal.LegendBuffInfo.Find(x => x.buffId == (int)dyn.buff_id);
+                        if (buff != null)
+                        {
+                            AnsiConsole.MarkupLine($"[fuchsia]玩家选择: {buff.name}[/]");
+                        }
+                    }
                 }
             }
             catch (Exception e)
@@ -266,6 +274,10 @@ namespace UmamusumeResponseAnalyzer
                     if (dyn.data_headers.server_list != null && dyn.data_headers.server_list.resource_server_login != null)
                     {
                         AnsiConsole.MarkupLine(I18N_LoginRequestDetected, dyn.data_headers.viewer_id);
+                    }
+                    if (data.choice_reward_array != null)
+                    {
+                        Handlers.ParseChoiceRewardResponse(data.choice_reward_array.ToObject<List<Gallop.ChoiceReward>>());
                     }
                 }
                 catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }

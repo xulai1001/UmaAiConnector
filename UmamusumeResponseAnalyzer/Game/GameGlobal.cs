@@ -1,6 +1,10 @@
 ﻿using System.Collections.Frozen;
 using static UmamusumeResponseAnalyzer.Localization.Game;
 using static UmamusumeResponseAnalyzer.Localization.CommandInfo.Cook;
+using static UmamusumeResponseAnalyzer.Localization.Legend;
+using CsvHelper;
+using UmamusumeResponseAnalyzer.Localization;
+using System.Globalization;
 
 namespace UmamusumeResponseAnalyzer.Game
 {
@@ -343,6 +347,22 @@ namespace UmamusumeResponseAnalyzer.Game
             { 9, [ 2300, 2200, 1800, 1400, 1400] },
             { 10, [ 2500, 2000, 2000, 1800, 1700] }
         };
+
+        public static List<LegendBuff> LegendBuffInfo = new List<LegendBuff>();
+
+        public static void LoadLegendBuffs()
+        {
+            var stream = Legend.ResourceManager.GetObject("legend_buff");
+            if (stream != null)
+            {
+                using (var ms = new MemoryStream((byte[])stream))
+                using (var reader = new StreamReader(ms))
+                using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+                {
+                    LegendBuffInfo = csv.GetRecords<LegendBuff>().ToList();
+                }
+            }
+        }
     }
 
     public static class ScoreUtils

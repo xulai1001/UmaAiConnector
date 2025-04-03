@@ -41,6 +41,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="CsvHelper" Version="33.0.1" />
 		<PackageReference Include="ini-parser-netstandard" Version="2.5.2" />
 		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageReference Include="MessagePack" Version="2.5.187" />
@@ -110,6 +111,11 @@
 		  <AutoGen>True</AutoGen>
 		  <DependentUpon>LaunchMenu.resx</DependentUpon>
 		</Compile>
+		<Compile Update="Localization\Legend.Designer.cs">
+		  <DesignTime>True</DesignTime>
+		  <AutoGen>True</AutoGen>
+		  <DependentUpon>Legend.resx</DependentUpon>
+		</Compile>
 		<Compile Update="Localization\NameManager.Designer.cs">
 		  <DesignTime>True</DesignTime>
 		  <AutoGen>True</AutoGen>
@@ -129,6 +135,11 @@
 		  <DesignTime>True</DesignTime>
 		  <AutoGen>True</AutoGen>
 		  <DependentUpon>Server.resx</DependentUpon>
+		</Compile>
+		<Compile Update="Properties\Resources.Designer.cs">
+		  <DesignTime>True</DesignTime>
+		  <AutoGen>True</AutoGen>
+		  <DependentUpon>Resources.resx</DependentUpon>
 		</Compile>
 	</ItemGroup>
 
@@ -184,6 +195,11 @@
 		  <Generator>ResXFileCodeGenerator</Generator>
 		  <LastGenOutput>LaunchMenu.Designer.cs</LastGenOutput>
 		</EmbeddedResource>
+		<EmbeddedResource Update="Localization\Legend.resx">
+		  <Generator>ResXFileCodeGenerator</Generator>
+		  <LastGenOutput>Legend.Designer.cs</LastGenOutput>
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</EmbeddedResource>
 		<EmbeddedResource Update="Localization\NameManager.resx">
 		  <Generator>ResXFileCodeGenerator</Generator>
 		  <LastGenOutput>NameManager.Designer.cs</LastGenOutput>
@@ -200,12 +216,21 @@
 		  <Generator>ResXFileCodeGenerator</Generator>
 		  <LastGenOutput>Server.Designer.cs</LastGenOutput>
 		</EmbeddedResource>
+		<EmbeddedResource Update="Properties\Resources.resx">
+		  <Generator>ResXFileCodeGenerator</Generator>
+		  <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Reference Include="NetFilterAPI">
 	    <HintPath>..\Assets\NetFilterAPI.dll</HintPath>
 	  </Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Localization\Resources\" />
+	  <Folder Include="Resources\" />
 	</ItemGroup>
 
 </Project>
