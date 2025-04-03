@@ -84,7 +84,9 @@ namespace UmamusumeResponseAnalyzer.AI
         public int lg_blue_currentStepCount;// 满3格启动超绝好调
         public int lg_blue_canExtendCount;// 还能延长几次
 
-        public int lg_green_todo; // 绿登
+        public bool lg_green_active;
+        public int lg_green_continuationZoneCount; 
+        public int lg_green_currentStepCount;
 
         public int[] lg_red_friendsGauge;// 红登的羁绊条，编号和personIdEnum对应
         public int[] lg_red_friendsLv;// 红登的等级条，编号和personIdEnum对应
@@ -479,7 +481,9 @@ namespace UmamusumeResponseAnalyzer.AI
                 lg_blue_remainCount = 0;
                 lg_blue_currentStepCount = 0;
                 lg_blue_canExtendCount = 0;
-                lg_green_todo = 0;
+                lg_green_active = false;
+                lg_green_continuationZoneCount = 0;
+                lg_green_currentStepCount = 0;
                 lg_red_friendsGauge = new int[16] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
                 lg_red_friendsLv = new int[16] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -493,6 +497,9 @@ namespace UmamusumeResponseAnalyzer.AI
                 }
                 else if (lg_mainColor == 1)
                 {
+                    lg_green_active= lg.masterly_bonus_info.info_9047.continuation_zone_count > 0;
+                    lg_green_continuationZoneCount = lg.masterly_bonus_info.info_9047.continuation_zone_count;
+                    lg_green_currentStepCount = lg.masterly_bonus_info.info_9047.current_step_count;
                 }
                 else if (lg_mainColor == 2)
                 {
