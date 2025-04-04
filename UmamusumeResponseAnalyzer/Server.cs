@@ -105,16 +105,18 @@ namespace UmamusumeResponseAnalyzer
                     {
                         Handlers.ParseTrainingRequest(dyn.ToObject<Gallop.SingleModeExecCommandRequest>());
                     }
-                    if (dyn.choice_number is not null and > (dynamic)0)  // 玩家点击了事件
+                    if (dyn.choice_number is not null)  // 玩家点击了事件
                     {
-                        Handlers.ParseChoiceRequest(dyn.ToObject<Gallop.SingleModeChoiceRequest>());
+                        var req = dyn.ToObject<Gallop.SingleModeChoiceRequest>();
+                        if (req != null && req.choice_number > 0)
+                            Handlers.ParseChoiceRequest(req);
                     }
                     if (dyn.buff_id is not null && GameGlobal.LegendBuffInfo.Count > 0)
                     {
                         var buff = GameGlobal.LegendBuffInfo.Find(x => x.buffId == (int)dyn.buff_id);
                         if (buff != null)
                         {
-                            AnsiConsole.MarkupLine($"[fuchsia]玩家选择: {buff.name}[/]");
+                            AnsiConsole.MarkupLine($"[violet]玩家选择: {buff.name}[/]");
                         }
                     }
                 }

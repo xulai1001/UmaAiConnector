@@ -192,6 +192,8 @@ namespace UmamusumeResponseAnalyzer.Game
                 if (!ExcludedFriendCards.Contains(c) && c / 10000 > 1)  // 稀有度>1
                     CardEventRemaining += c / 10000;
             }
+            lastSkill = new Dictionary<int, Gallop.SkillData>();
+            lastSkillTips = new Dictionary<int, SkillTips>();
         }
 
         // 开始记录属性变化
@@ -269,6 +271,12 @@ namespace UmamusumeResponseAnalyzer.Game
                 // 获得上一个事件的属性并保存
                 var currentValue = Capture(@event);
                 LastEvent.Value = currentValue - LastValue;
+                if (@event.data.unchecked_event_array.Count() > 0)
+                {
+                    var choices = @event.data.unchecked_event_array.First().event_contents_info.choice_array;
+                    if (choices.Count() > 0)
+                        LastEvent.SelectIndex = choices[0].select_index;
+                }                    
 
                 // 分析事件
                 var eventType = LastEvent.StoryId / 100000000;
@@ -289,17 +297,18 @@ namespace UmamusumeResponseAnalyzer.Game
                                 --CardEventRemaining;
                                 if (which == rarity)
                                 {
-                                    ++CardEventFinishCount;    // 走完了N个事件（N是稀有度）则认为连续事件走完了，不考虑断事件
-                                    if (rarity == 2)
-                                        --CardEventRemaining;   // 非SSR的情况下总事件数-1
-                                    if (CardEventFinishCount == 5)
-                                        CardEventFinishTurn = @event.data.chara_info.turn;
-                                    Print($"[yellow]连续事件完成[/]");
+                                    ++CardEventFinishCount;    // 走完了N个事件（N是稀有度）则认为连续事件走完了                                    
+                                    Print($"[green]连续事件完成[/]");
                                 }
                                 else
-                                {
-                                    Print($"[yellow]连续事件 {which} / {rarity}[/]");
+                                {                                    
+                                    if (IsEventBreaking(null))
+                                        ++CardEventFinishCount;    // 走完了N个事件（N是稀有度）则认为连续事件走完了
+                                    else
+                                        Print($"[yellow]连续事件 {which} / {rarity}[/]");
                                 }
+                                if (CardEventFinishCount == 5)
+                                    CardEventFinishTurn = @event.data.chara_info.turn;
                             }
                             else
                             {
@@ -342,44 +351,80 @@ namespace UmamusumeResponseAnalyzer.Game
                 LastValue = currentValue;
                 LastEvent.Turn = @event.data.chara_info.turn;
                 LastEvent.StoryId = @event.data.unchecked_event_array.Count() > 0 ? @event.data.unchecked_event_array.First().story_id : -1;
-
             }
         }
-
-        // 当玩家选择选项时进行记录
-        public static void UpdatePlayerChoice(Gallop.SingleModeChoiceRequest @event)
+        /// <summary>
+        ///  判断是否断事件
+        /// </summary>
+        /// <param name="request_choice">手动选择时，为@event.choice_number - 1</param>
+        public static bool IsEventBreaking(int? request_choice)
         {
-            var choiceIndex = @event.choice_number - 1;
-            if (LastEvent != null)
+            if (LastEvent != null && Database.Events.TryGetValue(LastEvent.StoryId, out var story))
             {
-                Print($"[yellow]玩家选择了 {@event.choice_number}[/]");
-
                 var eventType = LastEvent.StoryId / 100000000;
                 var cardId = LastEvent.StoryId / 1000 % 100000;
                 var rarity = LastEvent.StoryId / 10000000 % 10;  // 取第二位-稀有度
                 var which = LastEvent.StoryId % 100;   // 取低2位
-                // 是非友人事件，且记录了事件效果
-                if (eventType == 8 &&
-                    !ExcludedFriendCards.Contains(cardId) &&
-                    Database.Events.TryGetValue(LastEvent.StoryId, out var story) &&
-                    story.Choices.Count > choiceIndex &&
-                    story.Choices[choiceIndex].Count > 0)
+                
+                if (request_choice != null)
                 {
-                    var choice = story.Choices[choiceIndex][0];
-                    // 判断是否为断事件
-                    if (choice.SuccessEffectValue != null && choice.SuccessEffectValue.Extras.Any(x => x.Contains("打ち切り")))
+                    var choiceIndex = (int)request_choice;
+                    // 主动选择断事件
+                    // 是非友人事件，且记录了事件效果
+                    if (eventType == 8 &&
+                        !ExcludedFriendCards.Contains(cardId) &&
+                        story.Choices.Count > choiceIndex &&
+                        story.Choices[choiceIndex].Count > 0)
                     {
-                        Print(@"[red]事件中断[/]");
-                        if (CardIDs.Contains(cardId))             // 排除打断乱入连续事件的情况
+                        var choice = story.Choices[choiceIndex][0];
+                        // 判断是否为断事件
+                        if (choice.SuccessEffectValue != null && choice.SuccessEffectValue.Extras.Any(x => x.Contains("打ち切り")))
                         {
-                            ++CardEventFinishCount;
-                            CardEventRemaining -= (rarity - which); // 计算打断了几段事件，从总数里减去
-                            if (CardEventFinishCount == 5)
-                                CardEventFinishTurn = LastEvent.Turn;
+                            Print(@"[red]事件中断[/]");
+                            return true;
                         }
                     }
                 }
-            }
+                else
+                {
+                    // 自动断事件
+                    if (eventType == 8
+                        && !ExcludedFriendCards.Contains(cardId)
+                        && story.Choices.Count > 0
+                        && story.Choices[0].Count > LastEvent.SelectIndex)
+                    {
+                        var choice = story.Choices[0][LastEvent.SelectIndex];
+                        // 判断是否为断事件
+                        if (choice.SuccessEffectValue != null && choice.SuccessEffectValue.Extras.Any(x => x.Contains("打ち切り")))
+                        {
+                            Print(@"[green]事件提前完成[/]");
+                            return true;
+                        }
+                        // 特判(光明哥)
+                        if (LastEvent.StoryId == 830244001)
+                            return true;
+                    }
+                }   // if request_choice
+            }  // if LastEvent
+            return false;
+        }
+        // 当玩家选择选项时进行记录
+        public static void UpdatePlayerChoice(Gallop.SingleModeChoiceRequest @event)
+        {
+            Print($"[violet]选择选项 {@event.choice_number}[/]");
+            if (IsEventBreaking(@event.choice_number - 1))
+            {
+                var cardId = LastEvent.StoryId / 1000 % 100000;
+                var rarity = LastEvent.StoryId / 10000000 % 10;  // 取第二位-稀有度
+                var which = LastEvent.StoryId % 100;   // 取低2位
+                if (CardIDs.Contains(cardId))             // 排除打断乱入连续事件的情况
+                {
+                    ++CardEventFinishCount;
+                    CardEventRemaining -= (rarity - which); // 计算打断了几段事件，从总数里减去
+                    if (CardEventFinishCount == 5)
+                        CardEventFinishTurn = LastEvent.Turn;
+                }
+            }            
         }
 
         public static List<string> PrintCardEventPerf(int scenario)
