@@ -452,21 +452,19 @@ namespace UmamusumeResponseAnalyzer.Handler
 
             if (stage == 5)//选buff阶段
             {
-                AnsiConsole.MarkupLine("选心得: [yellow](注意！顺序和游戏中不同)[/]");
+                AnsiConsole.MarkupLine("选心得:");
                 var obtainableBuffIdArray = @event.data.legend_data_set.obtainable_buff_id_array;
-                foreach (var b in obtainableBuffIdArray)
+                var buffInfoList = obtainableBuffIdArray
+                    .Select(id => GameGlobal.LegendBuffInfo.Find(x => x.buffId == id))
+                    .Where(x => x != null)
+                    .OrderBy(x => x.color)
+                    .ThenBy(x => -x.rank)
+                    .ThenBy(x => x.buffId)
+                    .ToList();
+                foreach (var b in buffInfoList)
                 {
-                    var info = GameGlobal.LegendBuffInfo.Find(x => x.buffId == b);
-                    if (info != null)
-                    {
-                        AnsiConsole.MarkupLine($"{mainColorText(info.color+1)}☆{info.rank} {info.name} - {info.cn_effect}[/]");
-                    }
-                    else
-                    {
-                        AnsiConsole.MarkupLine($"{b}");
-                    }                    
+                    AnsiConsole.MarkupLine($"{mainColorText(b.color+1)}☆{b.rank} {b.name} - {b.cn_effect}[/]");                    
                 }
-
             }
 
             string GaugeColor((int, int) gain) => gain.Item1 switch

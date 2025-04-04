@@ -39,8 +39,8 @@ namespace UmamusumeResponseAnalyzer.Handler
 
                     if (i.story_id == 809043003)//佐岳充电
                     {
-                        int suc = i.event_contents_info.choice_array[0].select_index;
-                        int eventType = 0;
+                        var suc = i.event_contents_info.choice_array[0].select_index;
+                        var eventType = 0;
                         if (suc == 1)//加心情
                         {
                             eventType = 2;
